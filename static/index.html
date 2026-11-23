@@ -1597,12 +1597,6 @@
           }
           setActiveModel(activeModelId, false);
         }
-
-        fetch('/api/config').then(r => r.json()).then(cfg => {
-          if (!cfg.has_key) {
-            openSettingsModal();
-          }
-        }).catch(() => {});
       } catch (e) {
         console.error('Ошибка статуса:', e);
       }
