@@ -348,6 +348,10 @@ async def background_gemini_consolidator(session_id: str):
 
         try:
             cli = get_client()
+            load_dotenv(Path(__file__).parent / ".env", override=True)
+            curr_base_url = os.getenv("BASE_URL", BASE_URL)
+            curr_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("ABLIT_KEY", API_KEY)
+            is_openrouter = "openrouter.ai" in curr_base_url or (curr_key and curr_key.startswith("sk-or-"))
             distill_model = "deepseek/deepseek-v4.1-flash" if is_openrouter else "abliterated-model-large-flash"
 
             def run_distill():
@@ -733,6 +737,46 @@ async def chat_endpoint(req: ChatRequest):
                     "content": m.get("content")
                 })
 
+        # ЖЕСТКАЯ ЗАЩИТА БАЛАНСА: Скользящее окно (Sliding Window Truncation)
+        # Если история раздулась выше лимита context_limit, жестко обрезаем старые промежуточные сообщения,
+        # оставляя system prompt, первое сообщение пользователя и последние актуальные сообщения!
+        def trim_api_messages(msgs: List[dict], max_allowed_tokens: int) -> List[dict]:
+            if not msgs:
+                return msgs
+            sys_msg = msgs[0] if msgs[0].get("role") == "system" else None
+            rest = msgs[1:] if sys_msg else msgs[:]
+
+            def calc_tokens(m_list):
+                txt = sum(len(str(x.get("content") or "")) + len(str(x.get("tool_calls") or "")) for x in m_list)
+                return int(txt / 3.5)
+
+            if calc_tokens(msgs) <= max_allowed_tokens or len(rest) <= 4:
+                return msgs
+
+            first_user = next((x for x in rest if x.get("role") == "user"), None)
+            trimmed = []
+            budget = max_allowed_tokens - calc_tokens([sys_msg, first_user] if (sys_msg and first_user) else [sys_msg] if sys_msg else [])
+
+            for m in reversed(rest):
+                if m is first_user:
+                    continue
+                m_tokens = calc_tokens([m])
+                if budget - m_tokens < 0:
+                    break
+                trimmed.append(m)
+                budget -= m_tokens
+
+            trimmed.reverse()
+            final_list = []
+            if sys_msg:
+                final_list.append(sys_msg)
+            if first_user and (not trimmed or trimmed[0] is not first_user):
+                final_list.append(first_user)
+            final_list.extend(trimmed)
+            return final_list
+
+        api_messages = trim_api_messages(api_messages, req.context_limit)
+
         max_iterations = 25
         iteration = 0
 
@@ -747,10 +791,12 @@ async def chat_endpoint(req: ChatRequest):
 
             try:
                 cli = get_client()
+                safe_api_messages = trim_api_messages(api_messages, req.context_limit)
+
                 def get_stream():
                     return cli.chat.completions.create(
                         model=req.model,
-                        messages=api_messages,
+                        messages=safe_api_messages,
                         tools=[BASH_TOOL],
                         tool_choice="auto",
                         stream=True,
