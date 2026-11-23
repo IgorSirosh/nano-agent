@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NanoAgent 🧠 Context Distiller Edition (5051)</title>
+  <script src="/static/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #13111c;
+      --sidebar-bg: #0d0b14;
+      --card-bg: #1f1b2e;
+      --border: #38304f;
+      --text: #f4f4f5;
+      --text-muted: #a19db5;
+      --accent: #a855f7;
+      --accent-hover: #9333ea;
+      --distill-bg: #22143d;
+      --distill-border: #7c3aed;
+      --distill-glow: rgba(124, 58, 237, 0.25);
+      --tool-bg: #09090e;
+      --tool-border: #2e2840;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 270px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    #sidebar.collapsed {
+      width: 0;
+      overflow: hidden;
+      border-right: none;
+    }
+
+    .sidebar-header {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-new-chat {
+      width: 100%;
+      background: #1f1b2e;
+      color: #c084fc;
+      border: 1px solid #7c3aed;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-new-chat:hover {
+      background: #7c3aed;
+      color: #fff;
+    }
+
+    .sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .session-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+
+    .session-item:hover {
+      background: #1f1b2e;
+      color: var(--text);
+    }
+
+    .session-item.active {
+      background: #2e2646;
+      color: #fff;
+      border-color: #6b21a8;
+    }
+
+    .session-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .btn-del-session {
+      background: transparent;
+      border: none;
+      color: #71717a;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .session-item:hover .btn-del-session {
+      opacity: 1;
+    }
+    .btn-del-session:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Main Area */
+    #main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle-sidebar-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .toggle-sidebar-btn:hover {
+      background: var(--card-bg);
+      color: var(--text);
+    }
+
+    .header-title-box h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #e9d5ff;
+    }
+
+    .header-badge {
+      font-size: 0.7rem;
+      background: #581c87;
+      color: #f3e8ff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      border: 1px solid #9333ea;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-distill-now {
+      background: linear-gradient(135deg, #7c3aed, #c026d3);
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px var(--distill-glow);
+    }
+    .btn-distill-now:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+    .btn-distill-now:active {
+      transform: translateY(0);
+    }
+
+    .pill-balance {
+      background: #14532d;
+      border: 1px solid #16a34a;
+      color: #86efac;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .context-meter-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #181524;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+    }
+
+    .meter-bar-outer {
+      width: 70px;
+      height: 6px;
+      background: #272238;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .meter-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+
+    /* Chat Stream Area */
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 880px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .user-bubble {
+      align-self: flex-end;
+      background: #4c1d95;
+      border: 1px solid #6d28d9;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 14px 14px 2px 14px;
+      max-width: 85%;
+      word-break: break-word;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Distilled Memory Card (Active Memory) */
+    .distiller-card {
+      background: var(--distill-bg);
+      border: 1px solid var(--distill-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 20px var(--distill-glow);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .distiller-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+      padding-bottom: 8px;
+    }
+
+    .distiller-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #e9d5ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .distiller-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #581c87;
+      color: #f5d0fe;
+      border: 1px solid #a855f7;
+    }
+
+    .distiller-body {
+      font-size: 0.85rem;
+      color: #f3e8ff;
+      line-height: 1.5;
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .distiller-body h3 {
+      font-size: 0.85rem;
+      color: #c084fc;
+      margin: 10px 0 4px 0;
+      font-weight: 700;
+    }
+    .distiller-body ul, .distiller-body ol {
+      margin-left: 20px;
+      margin-bottom: 8px;
+    }
+    .distiller-body p {
+      margin-bottom: 6px;
+    }
+
+    /* Claude Code Thinking Box */
+    .thinking-box {
+      background: #171329;
+      border: 1px solid #3b2d54;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      font-size: 0.82rem;
+    }
+
+    .thinking-summary {
+      padding: 8px 12px;
+      color: #d8b4fe;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      font-weight: 500;
+      background: rgba(168, 85, 247, 0.05);
+    }
+    .thinking-summary:hover {
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .thinking-content {
+      padding: 10px 14px;
+      color: #c4b5fd;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      border-top: 1px solid #3b2d54;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+    }
+
+    /* Tool Call Card (Claude Code Style) */
+    .tool-card {
+      background: var(--tool-bg);
+      border: 1px solid var(--tool-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .tool-header {
+      background: #181524;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--tool-border);
+      font-size: 0.78rem;
+    }
+
+    .tool-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e4e4e7;
+    }
+
+    .tool-tag {
+      background: #2e2646;
+      color: #c084fc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .tool-timer {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .tool-cmd-line {
+      padding: 10px 14px;
+      color: #a855f7;
+      background: #0d0b14;
+      font-size: 0.8rem;
+      word-break: break-all;
+      border-bottom: 1px solid #1f1b2e;
+    }
+
+    .tool-output-box {
+      padding: 10px 14px;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      max-height: 320px;
+      overflow-y: auto;
+      line-height: 1.45;
+    }
+
+    .assistant-text-box {
+      color: var(--text);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      word-break: break-word;
+      padding: 6px 0;
+    }
+    .assistant-text-box p { margin-bottom: 10px; }
+    .assistant-text-box pre {
+      background: #0d0b14;
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .assistant-text-box code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+
+    /* Live status indicator */
+    .status-pill {
+      align-self: center;
+      background: #2e2646;
+      border: 1px solid #6b21a8;
+      color: #e9d5ff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #a855f7;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Footer / Input */
+    footer {
+      background: var(--sidebar-bg);
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-box-wrapper {
+      flex: 1;
+      background: #181524;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .input-box-wrapper:focus-within {
+      border-color: #a855f7;
+      box-shadow: 0 0 0 1px #a855f7;
+    }
+
+    #chat-input {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 0.95rem;
+      resize: none;
+      min-height: 44px;
+      max-height: 160px;
+      outline: none;
+      line-height: 1.4;
+      font-family: inherit;
+    }
+
+    .input-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toolbar-select {
+      background: #272238;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      outline: none;
+    }
+
+    .btn-send {
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-send:hover {
+      background: #9333ea;
+    }
+    .btn-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Model Selector UI & Header Component */
+    .model-header-btn {
+      background: #241b3d;
+      border: 1px solid #7c3aed;
+      color: #f3e8ff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+      user-select: none;
+    }
+    .model-header-btn:hover {
+      background: #332356;
+      border-color: #a855f7;
+      box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+      transform: translateY(-1px);
+    }
+    .model-header-btn .m-icon {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .model-header-btn .m-text-box {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+      text-align: left;
+    }
+    .model-header-btn .m-sublabel {
+      font-size: 0.65rem;
+      color: #c084fc;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .model-header-btn .m-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .model-header-btn .m-badge {
+      background: #581c87;
+      color: #e9d5ff;
+      border: 1px solid #9333ea;
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 700;
+      margin-left: 2px;
+    }
+    .model-header-btn .m-arrow {
+      font-size: 0.75rem;
+      color: #c084fc;
+      margin-left: 2px;
+      transition: transform 0.2s;
+    }
+    .model-header-btn:hover .m-arrow {
+      transform: translateY(1px);
+    }
+
+    /* Model Pills Toolbar (Quick select above input) */
+    .model-pills-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .model-pills-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #a855f7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .model-pills-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .model-pill {
+      background: #1e1933;
+      border: 1px solid #3e3560;
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .model-pill:hover {
+      background: #2b2347;
+      border-color: #8b5cf6;
+      color: #fff;
+    }
+    .model-pill.active {
+      background: linear-gradient(135deg, #6d28d9, #9333ea);
+      border-color: #d8b4fe;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 2px 10px rgba(147, 51, 234, 0.45);
+    }
+    .model-pill .pill-tag {
+      font-size: 0.65rem;
+      opacity: 0.8;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    .model-pill-more {
+      background: transparent;
+      border: 1px dashed #6b7280;
+      color: #9ca3af;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .model-pill-more:hover {
+      border-color: #a855f7;
+      color: #e9d5ff;
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .active-model-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #2a1f49;
+      border: 1px solid #7c3aed;
+      color: #e9d5ff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Modal dialog */
+    .model-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .model-modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .model-modal-window {
+      background: #171326;
+      border: 1px solid #581c87;
+      border-radius: 14px;
+      width: 90%;
+      max-width: 640px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.8), 0 0 30px rgba(124, 58, 237, 0.25);
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .model-modal-backdrop.open .model-modal-window {
+      transform: scale(1);
+    }
+    .model-modal-header {
+      background: #211a38;
+      padding: 14px 18px;
+      border-bottom: 1px solid #3b2d5f;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-title h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f3e8ff;
+      margin: 0;
+    }
+    .modal-provider-badge {
+      background: #581c87;
+      color: #f3e8ff;
+      border: 1px solid #9333ea;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .modal-close-btn:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .model-modal-body {
+      padding: 16px 18px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .model-cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .model-card {
+      background: #1e1832;
+      border: 1px solid #372d54;
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.15s ease;
+    }
+    .model-card:hover {
+      background: #2a2046;
+      border-color: #8b5cf6;
+      transform: translateY(-1px);
+    }
+    .model-card.active {
+      background: #2e1d52;
+      border-color: #c084fc;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+    }
+    .model-card-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .model-card-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      padding: 8px;
+      background: #2c224b;
+      border-radius: 8px;
+      border: 1px solid #493b70;
+    }
+    .model-card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .model-card-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .model-card-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .model-card-badge {
+      font-size: 0.68rem;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: #4c1d95;
+      color: #f3e8ff;
+      border: 1px solid #7c3aed;
+      font-weight: 600;
+    }
+    .model-card-context {
+      font-size: 0.72rem;
+      color: #a78bfa;
+      font-weight: 600;
+      font-family: monospace;
+    }
+    .model-card-desc {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+    .model-card-id {
+      font-size: 0.7rem;
+      color: #64748b;
+      font-family: monospace;
+    }
+    .model-card-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 90px;
+    }
+    .model-card-status .status-active-badge {
+      background: #15803d;
+      color: #dcfce7;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .model-card-status .btn-select-model {
+      background: #4c1d95;
+      color: #f3e8ff;
+      border: 1px solid #7c3aed;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .model-card-status .btn-select-model:hover {
+      background: #6d28d9;
+      color: #fff;
+    }
+    .custom-model-box {
+      background: #191428;
+      border: 1px dashed #4b3d70;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .custom-model-box label {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .custom-model-input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .custom-model-input-row input {
+      flex: 1;
+      background: #251c3d;
+      border: 1px solid #4e3d74;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    .custom-model-input-row input:focus {
+      border-color: #a855f7;
+    }
+    .custom-model-input-row button {
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .custom-model-input-row button:hover {
+      background: #9333ea;
+    }
+
+    /* Settings UI */
+    .btn-header-settings {
+      background: #1e1933;
+      border: 1px solid #3b2d5f;
+      color: #cbd5e1;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-header-settings:hover {
+      background: #2b2347;
+      border-color: #7c3aed;
+      color: #fff;
+    }
+    .settings-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .settings-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .settings-field label {
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .settings-input {
+      background: #231b38;
+      border: 1px solid #45376a;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .settings-input:focus {
+      border-color: #a855f7;
+    }
+    .btn-save-settings {
+      background: linear-gradient(135deg, #7c3aed, #9333ea);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-save-settings:hover {
+      filter: brightness(1.15);
+    }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid #4b5563;
+      color: #9ca3af;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-cancel:hover {
+      border-color: #cbd5e1;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <button class="btn-new-chat" id="btn-new-chat">
+        <span>+</span> Новый диалог
+      </button>
+    </div>
+    <div class="sessions-list" id="sessions-list"></div>
+  </div>
+
+  <!-- Main Wrapper -->
+  <div id="main-wrapper">
+    <header>
+      <div class="header-left">
+        <button class="toggle-sidebar-btn" id="btn-toggle-sidebar" title="Скрыть/показать сайдбар">☰</button>
+        <div class="header-title-box">
+          <h1>🧠 NanoAgent Distiller <span class="header-badge">:5051 (Powered by Gemini)</span></h1>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Interactive Model Selector in Header -->
+        <div class="model-header-btn" id="model-header-btn" title="Нажмите, чтобы открыть меню выбора модели">
+          <span class="m-icon" id="m-header-icon">⚡</span>
+          <div class="m-text-box">
+            <span class="m-sublabel">Модель</span>
+            <span class="m-name" id="m-header-name">Flash 1M</span>
+          </div>
+          <span class="m-badge" id="m-header-badge">1M</span>
+          <span class="m-arrow">▾</span>
+        </div>
+
+        <button class="btn-distill-now" id="btn-distill-now" title="Принудительно сжать старую историю в рабочую память">
+          <span>⚡</span> Сжать память (Distill)
+        </button>
+        <div class="pill-balance" id="pill-balance" title="Остаток на балансе Abliteration">$0.0000</div>
+        <div class="context-meter-box" id="context-meter-box" title="Заполненность контекста">
+          <span>Контекст:</span>
+          <div class="meter-bar-outer">
+            <div class="meter-bar-inner" id="meter-bar-inner"></div>
+          </div>
+          <span id="meter-text">0%</span>
+        </div>
+
+        <button type="button" class="btn-header-settings" id="btn-header-settings" title="Настройки API-ключей и провайдера">
+          <span>⚙️</span> Настройки
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat messages -->
+    <div id="chat-container"></div>
+
+    <!-- Input footer -->
+    <footer>
+      <div class="input-box-wrapper">
+        <!-- Quick Model Select Pills above input -->
+        <div class="model-pills-bar" id="model-pills-bar">
+          <span class="model-pills-label">⚡ Модель:</span>
+          <div class="model-pills-list" id="model-pills-list">
+            <!-- Rendered dynamically -->
+          </div>
+          <button type="button" class="model-pill-more" id="btn-open-model-modal" title="Подробный каталог моделей с описанием">
+            ⚙️ Каталог моделей
+          </button>
+        </div>
+
+        <textarea id="chat-input" placeholder="Введите задачу для агента... (Shift+Enter для новой строки)"></textarea>
+        <div class="input-toolbar">
+          <div class="toolbar-left">
+            <div class="active-model-tag" id="active-model-tag" title="Текущая активная модель нейросети">
+              <span id="tag-model-icon">⚡</span>
+              <span id="tag-model-name">Flash 1M (DeepSeek V4.1)</span>
+            </div>
+
+            <!-- Hidden native select for 100% backward compatibility -->
+            <select class="toolbar-select" id="model-select" style="display: none;"></select>
+
+            <span>Reasoning:</span>
+            <select class="toolbar-select" id="reasoning-select">
+              <option value="low" selected>Low</option>
+              <option value="none">None</option>
+              <option value="high">High</option>
+            </select>
+            <span>Порог сжатия:</span>
+            <select class="toolbar-select" id="threshold-select">
+              <option value="0.40">40%</option>
+              <option value="0.50" selected>50%</option>
+              <option value="0.60">60%</option>
+              <option value="0.70">70%</option>
+            </select>
+          </div>
+          <button class="btn-send" id="btn-send">Отправить</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Model Selection Modal -->
+  <div class="model-modal-backdrop" id="model-modal-backdrop">
+    <div class="model-modal-window">
+      <div class="model-modal-header">
+        <div class="modal-title">
+          <h3>🧠 Выбор модели нейросети</h3>
+          <span class="modal-provider-badge" id="modal-provider-badge">Abliteration AI</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="modal-close-btn" title="Закрыть">✕</button>
+      </div>
+      <div class="model-modal-body">
+        <div class="model-cards-grid" id="model-cards-grid">
+          <!-- Rendered dynamically via JS -->
+        </div>
+
+        <div class="custom-model-box">
+          <label>Ввести произвольный ID модели:</label>
+          <div class="custom-model-input-row">
+            <input type="text" id="custom-model-input" placeholder="например: mistralai/mistral-large или deepseek/deepseek-chat" />
+            <button type="button" id="custom-model-apply-btn">Применить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings & API Keys Modal -->
+  <div class="model-modal-backdrop" id="settings-modal-backdrop">
+    <div class="model-modal-window" style="max-width: 520px;">
+      <div class="model-modal-header">
+        <div class="modal-title">
+          <h3>⚙️ Настройки API и провайдера</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="settings-modal-close">✕</button>
+      </div>
+      <div class="model-modal-body">
+        <div class="settings-form">
+          <div class="settings-field">
+            <label>Провайдер нейросетей:</label>
+            <select id="settings-provider-select" class="settings-input">
+              <option value="abliteration">Abliteration AI (Без цензуры, по умолчанию)</option>
+              <option value="openrouter">OpenRouter API (Claude, GPT, DeepSeek)</option>
+              <option value="custom">Свой OpenAI-совместимый сервер</option>
+            </select>
+          </div>
+
+          <div class="settings-field" id="settings-baseurl-group" style="display: none;">
+            <label>Base URL API:</label>
+            <input type="text" id="settings-baseurl-input" class="settings-input" placeholder="https://api.example.com/v1" />
+          </div>
+
+          <div class="settings-field">
+            <label>Основной API-ключ (<span id="settings-key-label">Abliteration ak_...</span>):</label>
+            <input type="password" id="settings-apikey-input" class="settings-input" placeholder="Введите ваш API-ключ..." />
+          </div>
+
+          <div class="settings-field" id="settings-admin-group">
+            <label>Admin Key (для проверки баланса Abliteration):</label>
+            <input type="password" id="settings-adminkey-input" class="settings-input" placeholder="sk_... (необязательно)" />
+          </div>
+
+          <div id="settings-save-status" style="font-size: 0.82rem; margin-top: 6px; display: none;"></div>
+
+          <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn-cancel" id="settings-cancel-btn">Отмена</button>
+            <button type="button" class="btn-save-settings" id="settings-save-btn">💾 Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSessionId = null;
+    let isGenerating = false;
+
+    const chatContainer = document.getElementById('chat-container');
+    const chatInput = document.getElementById('chat-input');
+    const btnSend = document.getElementById('btn-send');
+    const btnNewChat = document.getElementById('btn-new-chat');
+    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    const btnDistillNow = document.getElementById('btn-distill-now');
+    const sidebar = document.getElementById('sidebar');
+    const sessionsList = document.getElementById('sessions-list');
+    const pillBalance = document.getElementById('pill-balance');
+    const meterBarInner = document.getElementById('meter-bar-inner');
+    const meterText = document.getElementById('meter-text');
+    const modelSelect = document.getElementById('model-select');
+    const reasoningSelect = document.getElementById('reasoning-select');
+    const thresholdSelect = document.getElementById('threshold-select');
+
+    // New Model UI Elements
+    const modelHeaderBtn = document.getElementById('model-header-btn');
+    const mHeaderIcon = document.getElementById('m-header-icon');
+    const mHeaderName = document.getElementById('m-header-name');
+    const mHeaderBadge = document.getElementById('m-header-badge');
+    const modelPillsList = document.getElementById('model-pills-list');
+    const btnOpenModelModal = document.getElementById('btn-open-model-modal');
+    const tagModelIcon = document.getElementById('tag-model-icon');
+    const tagModelName = document.getElementById('tag-model-name');
+    const modelModalBackdrop = document.getElementById('model-modal-backdrop');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalProviderBadge = document.getElementById('modal-provider-badge');
+    const modelCardsGrid = document.getElementById('model-cards-grid');
+    const customModelInput = document.getElementById('custom-model-input');
+    const customModelApplyBtn = document.getElementById('custom-model-apply-btn');
+
+    // Settings UI Elements
+    const btnHeaderSettings = document.getElementById('btn-header-settings');
+    const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
+    const settingsModalClose = document.getElementById('settings-modal-close');
+    const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+    const settingsSaveBtn = document.getElementById('settings-save-btn');
+    const settingsProviderSelect = document.getElementById('settings-provider-select');
+    const settingsBaseurlGroup = document.getElementById('settings-baseurl-group');
+    const settingsBaseurlInput = document.getElementById('settings-baseurl-input');
+    const settingsKeyLabel = document.getElementById('settings-key-label');
+    const settingsApikeyInput = document.getElementById('settings-apikey-input');
+    const settingsAdminGroup = document.getElementById('settings-admin-group');
+    const settingsAdminkeyInput = document.getElementById('settings-adminkey-input');
+    const settingsSaveStatus = document.getElementById('settings-save-status');
+
+    function openSettingsModal() {
+      settingsModalBackdrop.classList.add('open');
+      loadSettingsConfig();
+    }
+    function closeSettingsModal() {
+      settingsModalBackdrop.classList.remove('open');
+      settingsSaveStatus.style.display = 'none';
+    }
+
+    if (btnHeaderSettings) btnHeaderSettings.onclick = openSettingsModal;
+    if (settingsModalClose) settingsModalClose.onclick = closeSettingsModal;
+    if (settingsCancelBtn) settingsCancelBtn.onclick = closeSettingsModal;
+    if (settingsModalBackdrop) {
+      settingsModalBackdrop.onclick = (e) => {
+        if (e.target === settingsModalBackdrop) closeSettingsModal();
+      };
+    }
+
+    settingsProviderSelect.onchange = () => {
+      const p = settingsProviderSelect.value;
+      if (p === 'openrouter') {
+        settingsBaseurlGroup.style.display = 'none';
+        settingsAdminGroup.style.display = 'none';
+        settingsKeyLabel.textContent = 'OpenRouter sk-or-v1-...';
+      } else if (p === 'custom') {
+        settingsBaseurlGroup.style.display = 'flex';
+        settingsAdminGroup.style.display = 'flex';
+        settingsKeyLabel.textContent = 'API ключ';
+      } else {
+        settingsBaseurlGroup.style.display = 'none';
+        settingsAdminGroup.style.display = 'flex';
+        settingsKeyLabel.textContent = 'Abliteration ak_...';
+      }
+    };
+
+    async function loadSettingsConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.provider) settingsProviderSelect.value = data.provider;
+        if (data.base_url) settingsBaseurlInput.value = data.base_url;
+        if (data.masked_key) settingsApikeyInput.placeholder = `Текущий ключ: ${data.masked_key}`;
+        settingsProviderSelect.onchange();
+      } catch (e) {
+        console.error('Ошибка загрузки конфига:', e);
+      }
+    }
+
+    settingsSaveBtn.onclick = async () => {
+      const prov = settingsProviderSelect.value;
+      const key = settingsApikeyInput.value.trim();
+      const bUrl = settingsBaseurlInput.value.trim();
+      const adm = settingsAdminkeyInput.value.trim();
+
+      if (!key) {
+        settingsSaveStatus.style.display = 'block';
+        settingsSaveStatus.style.color = '#ef4444';
+        settingsSaveStatus.textContent = 'Пожалуйста, введите API-ключ!';
+        return;
+      }
+
+      settingsSaveBtn.disabled = true;
+      settingsSaveBtn.textContent = 'Сохранение...';
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            provider: prov,
+            api_key: key,
+            base_url: bUrl || undefined,
+            admin_key: adm || undefined
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          settingsSaveStatus.style.display = 'block';
+          settingsSaveStatus.style.color = '#10b981';
+          settingsSaveStatus.textContent = '✓ Сохранено! Обновляем статус...';
+          await fetchStatus();
+          setTimeout(() => {
+            closeSettingsModal();
+            settingsSaveBtn.disabled = false;
+            settingsSaveBtn.textContent = '💾 Сохранить';
+          }, 800);
+        } else {
+          settingsSaveStatus.style.display = 'block';
+          settingsSaveStatus.style.color = '#ef4444';
+          settingsSaveStatus.textContent = 'Ошибка: ' + (data.detail || 'Не удалось сохранить');
+          settingsSaveBtn.disabled = false;
+          settingsSaveBtn.textContent = '💾 Сохранить';
+        }
+      } catch (e) {
+        settingsSaveStatus.style.display = 'block';
+        settingsSaveStatus.style.color = '#ef4444';
+        settingsSaveStatus.textContent = 'Ошибка сети: ' + e.message;
+        settingsSaveBtn.disabled = false;
+        settingsSaveBtn.textContent = '💾 Сохранить';
+      }
+    };
+
+    let loadedModels = [];
+    let activeModelId = localStorage.getItem('nanoagent_selected_model') || 'abliterated-model-large-flash';
+
+    function openModelModal() {
+      modelModalBackdrop.classList.add('open');
+      customModelInput.focus();
+    }
+
+    function closeModelModal() {
+      modelModalBackdrop.classList.remove('open');
+    }
+
+    modalCloseBtn.onclick = closeModelModal;
+    modelHeaderBtn.onclick = openModelModal;
+    btnOpenModelModal.onclick = openModelModal;
+    modelModalBackdrop.onclick = (e) => {
+      if (e.target === modelModalBackdrop) closeModelModal();
+    };
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modelModalBackdrop.classList.contains('open')) {
+        closeModelModal();
+      }
+    });
+
+    customModelApplyBtn.onclick = () => {
+      const val = customModelInput.value.trim();
+      if (!val) return;
+      setActiveModel(val, true);
+      customModelInput.value = '';
+      closeModelModal();
+    };
+    customModelInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        customModelApplyBtn.click();
+      }
+    };
+
+    function setActiveModel(modelId, save = true) {
+      if (!modelId) return;
+      activeModelId = modelId;
+      if (save) {
+        localStorage.setItem('nanoagent_selected_model', modelId);
+      }
+
+      // Check if model exists in loadedModels
+      let model = loadedModels.find(m => m.id === modelId);
+      if (!model) {
+        model = {
+          id: modelId,
+          name: modelId,
+          short_name: modelId.split('/').pop(),
+          icon: '⚡',
+          badge: 'Своя модель',
+          context: 'Пользовательская',
+          desc: 'Собственный ID модели'
+        };
+        loadedModels.push(model);
+        renderPills();
+        renderCards();
+      }
+
+      // Synchronize hidden native select
+      let opt = Array.from(modelSelect.options).find(o => o.value === modelId);
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = modelId;
+        opt.textContent = model.name || modelId;
+        modelSelect.appendChild(opt);
+      }
+      modelSelect.value = modelId;
+
+      // Update Header
+      if (mHeaderIcon) mHeaderIcon.textContent = model.icon || '⚡';
+      if (mHeaderName) mHeaderName.textContent = model.short_name || model.name || model.id;
+      if (mHeaderBadge) {
+        const ctxLabel = model.context ? model.context.split(' ')[0] : '1M';
+        mHeaderBadge.textContent = ctxLabel;
+      }
+
+      // Update Active Tag
+      if (tagModelIcon) tagModelIcon.textContent = model.icon || '⚡';
+      if (tagModelName) tagModelName.textContent = model.name || model.id;
+
+      // Update pills active state
+      document.querySelectorAll('.model-pill').forEach(btn => {
+        if (btn.dataset.modelId === modelId) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Update cards active state
+      document.querySelectorAll('.model-card').forEach(card => {
+        const isAct = card.dataset.modelId === modelId;
+        card.classList.toggle('active', isAct);
+        const statusBox = card.querySelector('.model-card-status');
+        if (statusBox) {
+          if (isAct) {
+            statusBox.innerHTML = '<span class="status-active-badge">✓ Активна</span>';
+          } else {
+            statusBox.innerHTML = '<button type="button" class="btn-select-model">Выбрать</button>';
+          }
+        }
+      });
+    }
+
+    function renderPills() {
+      modelPillsList.innerHTML = '';
+      loadedModels.forEach(m => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'model-pill' + (m.id === activeModelId ? ' active' : '');
+        btn.dataset.modelId = m.id;
+        btn.onclick = () => setActiveModel(m.id, true);
+
+        const short = escapeHtml(m.short_name || m.name || m.id);
+        const badgeTag = m.context ? escapeHtml(m.context.split(' ')[0]) : '';
+        btn.innerHTML = `
+          <span>${m.icon || '⚡'}</span>
+          <span>${short}</span>
+          ${badgeTag ? `<span class="pill-tag">${badgeTag}</span>` : ''}
+        `;
+        modelPillsList.appendChild(btn);
+      });
+    }
+
+    function renderCards() {
+      modelCardsGrid.innerHTML = '';
+      loadedModels.forEach(m => {
+        const isAct = m.id === activeModelId;
+        const card = document.createElement('div');
+        card.className = 'model-card' + (isAct ? ' active' : '');
+        card.dataset.modelId = m.id;
+        card.onclick = () => {
+          setActiveModel(m.id, true);
+          closeModelModal();
+        };
+
+        card.innerHTML = `
+          <div class="model-card-left">
+            <div class="model-card-icon">${m.icon || '⚡'}</div>
+            <div class="model-card-info">
+              <div class="model-card-title-row">
+                <span class="model-card-name">${escapeHtml(m.name || m.id)}</span>
+                ${m.badge ? `<span class="model-card-badge">${escapeHtml(m.badge)}</span>` : ''}
+                ${m.context ? `<span class="model-card-context">${escapeHtml(m.context)}</span>` : ''}
+              </div>
+              <div class="model-card-desc">${escapeHtml(m.desc || '')}</div>
+              <div class="model-card-id">${escapeHtml(m.id)}</div>
+            </div>
+          </div>
+          <div class="model-card-status">
+            ${isAct ? '<span class="status-active-badge">✓ Активна</span>' : '<button type="button" class="btn-select-model">Выбрать</button>'}
+          </div>
+        `;
+        modelCardsGrid.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function scrollToBottom() {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function updateContextMeter(tokens, limit) {
+      if (!limit || limit <= 0) limit = 32000;
+      const pct = Math.min(100, Math.round((tokens / limit) * 100));
+      meterBarInner.style.width = pct + '%';
+      meterText.textContent = `${pct}% (${tokens} t)`;
+      if (pct > 80) {
+        meterBarInner.style.background = 'var(--danger)';
+      } else if (pct > 50) {
+        meterBarInner.style.background = 'var(--warning)';
+      } else {
+        meterBarInner.style.background = 'var(--accent)';
+      }
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.balance) {
+          pillBalance.textContent = data.balance;
+        }
+        if (data.provider) {
+          modalProviderBadge.textContent = data.provider === 'abliteration' ? 'Abliteration AI (Без цензуры)' : 'OpenRouter API';
+        }
+        if (data.models && Array.isArray(data.models)) {
+          loadedModels = data.models;
+
+          // Populate native select for fallback
+          modelSelect.innerHTML = '';
+          loadedModels.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name || m.id;
+            modelSelect.appendChild(opt);
+          });
+
+          renderPills();
+          renderCards();
+
+          // Ensure active model is selected or fallback to first
+          const exists = loadedModels.some(m => m.id === activeModelId);
+          if (!exists && loadedModels.length > 0) {
+            activeModelId = loadedModels[0].id;
+          }
+          setActiveModel(activeModelId, false);
+        }
+
+        fetch('/api/config').then(r => r.json()).then(cfg => {
+          if (!cfg.has_key) {
+            openSettingsModal();
+          }
+        }).catch(() => {});
+      } catch (e) {
+        console.error('Ошибка статуса:', e);
+      }
+    }
+
+    async function loadSessions() {
+      try {
+        const res = await fetch('/api/sessions');
+        const list = await res.json();
+        sessionsList.innerHTML = '';
+        list.forEach(s => {
+          const item = document.createElement('div');
+          item.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
+          item.onclick = () => selectSession(s.id);
+          item.innerHTML = `
+            <span class="session-title">${escapeHtml(s.title || 'Диалог ' + s.id)}</span>
+            <button class="btn-del-session" title="Удалить" onclick="event.stopPropagation(); deleteSession('${s.id}')">✕</button>
+          `;
+          sessionsList.appendChild(item);
+        });
+        if (!currentSessionId && list.length > 0) {
+          selectSession(list[0].id);
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки сессий:', e);
+      }
+    }
+
+    async function selectSession(id) {
+      if (currentSessionId === id && chatContainer.children.length > 0) return;
+      currentSessionId = id;
+      chatContainer.innerHTML = '';
+      document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+      await loadSessionMessages(id);
+      loadSessions();
+    }
+
+    async function deleteSession(id) {
+      if (!confirm('Удалить этот диалог?')) return;
+      await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      if (currentSessionId === id) currentSessionId = null;
+      await loadSessions();
+      if (!currentSessionId) {
+        const res = await fetch('/api/sessions/new', { method: 'POST' });
+        const s = await res.json();
+        selectSession(s.id);
+      }
+    }
+
+    async function loadSessionMessages(id) {
+      try {
+        const res = await fetch(`/api/sessions/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateContextMeter(data.tokens || 0, 32000);
+
+        const msgs = data.messages || [];
+        if (msgs.length === 0) {
+          appendMessage('Привет! Это экспериментальный хост с AI-компрессором контекста (Distiller). Задай задачу — по мере выполнения агент будет сжимать историю в сухую рабочую память.', 'assistant');
+          return;
+        }
+
+        msgs.forEach(m => {
+          if (m.is_distilled_memory || (m.role === 'user' && m.content && m.content.startsWith('[🧠 ДИСТИЛЛИРОВАННАЯ'))) {
+            renderHistoricDistilledMemory(m.content);
+          } else if (m.is_distilled_ack) {
+            // skip ack
+          } else if (m.role === 'user') {
+            appendMessage(m.content, 'user');
+          } else if (m.role === 'assistant') {
+            if (m.reasoning) renderHistoricReasoning(m.reasoning);
+            if (m.content) appendMessage(m.content, 'assistant');
+          } else if (m.role === 'tool') {
+            renderHistoricTool(m.command || 'bash', m.content || '');
+          }
+        });
+        scrollToBottom();
+      } catch (e) {
+        console.error('Ошибка загрузки сообщений:', e);
+      }
+    }
+
+    function appendMessage(text, role) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      if (role === 'user') {
+        const b = document.createElement('div');
+        b.className = 'user-bubble';
+        b.textContent = text;
+        row.appendChild(b);
+      } else {
+        const b = document.createElement('div');
+        b.className = 'assistant-text-box';
+        b.innerHTML = marked.parse(text || '');
+        row.appendChild(b);
+      }
+      chatContainer.appendChild(row);
+      scrollToBottom();
+    }
+
+    function renderHistoricDistilledMemory(rawText) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      const clean = rawText.replace('[🧠 ДИСТИЛЛИРОВАННАЯ РАБОЧАЯ ПАМЯТЬ АГЕНТА]', '').trim();
+      const card = document.createElement('div');
+      card.className = 'distiller-card';
+      card.innerHTML = `
+        <div class="distiller-header">
+          <div class="distiller-title"><span>🧠</span> AI Context Distiller: Активная рабочая память</div>
+          <span class="distiller-badge">Дистиллировано</span>
+        </div>
+        <div class="distiller-body">${marked.parse(clean)}</div>
+      `;
+      row.appendChild(card);
+      chatContainer.appendChild(row);
+    }
+
+    function renderHistoricReasoning(text) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      const b = document.createElement('div');
+      b.className = 'thinking-box';
+      b.innerHTML = `
+        <div class="thinking-summary" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+          <span>💭 Рассуждения модели</span>
+          <span style="font-size: 0.75rem">развернуть</span>
+        </div>
+        <div class="thinking-content" style="display: none;">${escapeHtml(text)}</div>
+      `;
+      row.appendChild(b);
+      chatContainer.appendChild(row);
+    }
+
+    function renderHistoricTool(cmd, output) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      const b = document.createElement('div');
+      b.className = 'tool-card';
+      b.innerHTML = `
+        <div class="tool-header">
+          <div class="tool-header-left">
+            <span class="tool-tag">bash</span>
+            <span class="tool-cmd-preview">${escapeHtml(cmd.slice(0, 70))}</span>
+          </div>
+          <span class="tool-timer">выполнено</span>
+        </div>
+        <div class="tool-cmd-line">$ ${escapeHtml(cmd)}</div>
+        <div class="tool-output-box">${escapeHtml(output)}</div>
+      `;
+      row.appendChild(b);
+      chatContainer.appendChild(row);
+    }
+
+    // Active Card State
+    let activeDistillerCard = null;
+    let activeToolCard = null;
+    let activeAssistantBox = null;
+    let activeStatusPill = null;
+
+    function showStatus(text) {
+      removeStatus();
+      activeStatusPill = document.createElement('div');
+      activeStatusPill.className = 'status-pill';
+      activeStatusPill.innerHTML = `<div class="spinner"></div><span>${escapeHtml(text)}</span>`;
+      chatContainer.appendChild(activeStatusPill);
+      scrollToBottom();
+    }
+
+    function removeStatus() {
+      if (activeStatusPill) {
+        activeStatusPill.remove();
+        activeStatusPill = null;
+      }
+    }
+
+    // Distiller UI Handlers
+    function startDistillerCard(tokensBefore, turnsCount) {
+      removeStatus();
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      activeDistillerCard = document.createElement('div');
+      activeDistillerCard.className = 'distiller-card';
+      activeDistillerCard.innerHTML = `
+        <div class="distiller-header">
+          <div class="distiller-title">
+            <div class="spinner"></div>
+            <span>🧠 Gemini Distiller: Сжатие контекста в реальном времени...</span>
+          </div>
+          <span class="distiller-badge" id="distiller-badge-live">Анализ ${turnsCount} шагов (~${tokensBefore} tok)</span>
+        </div>
+        <div class="distiller-body" id="distiller-live-body" style="color: #d8b4fe; font-family: monospace; font-size: 0.8rem;"></div>
+      `;
+      row.appendChild(activeDistillerCard);
+      chatContainer.appendChild(row);
+      scrollToBottom();
+    }
+
+    function updateDistillerDelta(delta) {
+      if (!activeDistillerCard) return;
+      const body = activeDistillerCard.querySelector('#distiller-live-body');
+      if (body) {
+        body.textContent += delta;
+        scrollToBottom();
+      }
+    }
+
+    function finalizeDistillerCard(summary, tokensBefore, tokensAfter, savedTokens, savedPercent) {
+      if (!activeDistillerCard) return;
+      activeDistillerCard.innerHTML = `
+        <div class="distiller-header">
+          <div class="distiller-title">
+            <span>✨</span>
+            <span>🧠 Рабочая память агента (Сжато через Google Gemini)</span>
+          </div>
+          <span class="distiller-badge" style="background:#15803d; border-color:#22c55e; color:#dcfce7">
+            ${tokensBefore} ➔ ${tokensAfter} tok (-${savedPercent}%) • $0
+          </span>
+        </div>
+        <div class="distiller-body">${marked.parse(summary)}</div>
+      `;
+      activeDistillerCard = null;
+      scrollToBottom();
+    }
+
+    // Asynchronous Background Distill Handler
+    let lastHandledDistillFinish = 0;
+
+    btnDistillNow.onclick = async () => {
+      if (!currentSessionId) return;
+      try {
+        const res = await fetch('/api/distill', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ session_id: currentSessionId })
+        });
+        const data = await res.json();
+        showNotificationToast(data.message || 'Фоновая дистилляция запущена');
+        checkBackgroundDistillStatus();
+      } catch (err) {
+        console.error('Ошибка запуска дистилляции:', err);
+      }
+    };
+
+    function showNotificationToast(msg) {
+      const t = document.createElement('div');
+      t.className = 'status-pill';
+      t.style.position = 'fixed';
+      t.style.bottom = '85px';
+      t.style.right = '24px';
+      t.style.zIndex = '9999';
+      t.style.background = '#2e1065';
+      t.style.borderColor = '#a855f7';
+      t.style.boxShadow = '0 4px 20px rgba(168, 85, 247, 0.4)';
+      t.innerHTML = `<span>✨</span> <span>${escapeHtml(msg)}</span>`;
+      document.body.appendChild(t);
+      setTimeout(() => { t.remove(); }, 4500);
+    }
+
+    async function checkBackgroundDistillStatus() {
+      if (!currentSessionId) return;
+      try {
+        const res = await fetch(`/api/distill/status/${currentSessionId}`);
+        const data = await res.json();
+        if (data.status === 'running') {
+          btnDistillNow.style.background = '#581c87';
+          btnDistillNow.innerHTML = `<div class="spinner"></div> <span>Gemini сжимает в фоне...</span>`;
+          btnDistillNow.disabled = true;
+        } else {
+          btnDistillNow.style.background = 'linear-gradient(135deg, #7c3aed, #c026d3)';
+          btnDistillNow.innerHTML = `<span>⚡</span> <span>Сжать память (Distill)</span>`;
+          btnDistillNow.disabled = false;
+
+          if (data.status === 'done' && data.finished_at && data.finished_at > lastHandledDistillFinish) {
+            lastHandledDistillFinish = data.finished_at;
+            showNotificationToast(`Фоновая память обновлена: ${data.tokens_before} ➔ ${data.tokens_after} tok (-${data.saved_percent}%) • $0`);
+            updateContextMeter(data.tokens_after, 32000);
+            loadSessionMessages(currentSessionId);
+          }
+        }
+      } catch (e) {
+        // silent
+      }
+    }
+
+    setInterval(checkBackgroundDistillStatus, 3000);
+
+    // Send Message
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text || isGenerating) return;
+
+      isGenerating = true;
+      btnSend.disabled = true;
+      chatInput.value = '';
+
+      appendMessage(text, 'user');
+      showStatus('Инициализация запроса...');
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            message: text,
+            session_id: currentSessionId,
+            model: modelSelect.value,
+            reasoning_effort: reasoningSelect.value,
+            context_limit: 32000,
+            compress_threshold: parseFloat(thresholdSelect.value)
+          })
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            const data = JSON.parse(raw);
+
+            if (data.type === 'session_init') {
+              currentSessionId = data.session_id;
+              if (data.context_tokens !== undefined) {
+                updateContextMeter(data.context_tokens, data.context_limit);
+              }
+            } else if (data.type === 'status') {
+              showStatus(data.text);
+            } else if (data.type === 'distiller_start') {
+              startDistillerCard(data.tokens_before, data.turns_count);
+            } else if (data.type === 'distiller_delta') {
+              updateDistillerDelta(data.delta);
+            } else if (data.type === 'distiller_done') {
+              finalizeDistillerCard(data.summary, data.tokens_before, data.tokens_after, data.saved_tokens, data.saved_percent);
+              updateContextMeter(data.tokens_after, 32000);
+            } else if (data.type === 'reasoning') {
+              removeStatus();
+              handleReasoningChunk(data.delta);
+            } else if (data.type === 'content') {
+              removeStatus();
+              handleContentChunk(data.delta);
+            } else if (data.type === 'tool_start') {
+              removeStatus();
+              handleToolStart(data.tool, data.command);
+            } else if (data.type === 'tool_done') {
+              handleToolDone(data.tool, data.command, data.output);
+            } else if (data.type === 'usage') {
+              if (data.balance) pillBalance.textContent = data.balance;
+              if (data.context_tokens !== undefined) {
+                updateContextMeter(data.context_tokens, data.context_limit);
+              }
+            } else if (data.type === 'error') {
+              removeStatus();
+              appendMessage('❌ Ошибка: ' + data.error, 'assistant');
+            } else if (data.type === 'done') {
+              removeStatus();
+              finalizeCurrentAssistantBox();
+              finalizeCurrentToolCard();
+              loadSessions();
+            }
+          }
+        }
+      } catch (err) {
+        removeStatus();
+        appendMessage('❌ Ошибка сети: ' + err.message, 'assistant');
+      } finally {
+        isGenerating = false;
+        btnSend.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    let activeThinkingBox = null;
+    let thinkingContentEl = null;
+
+    function handleReasoningChunk(delta) {
+      if (!activeThinkingBox) {
+        const row = document.createElement('div');
+        row.className = 'msg-row';
+        activeThinkingBox = document.createElement('div');
+        activeThinkingBox.className = 'thinking-box';
+        activeThinkingBox.innerHTML = `
+          <div class="thinking-summary" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+            <span>💭 Размышления модели...</span>
+            <span style="font-size: 0.75rem">свернуть/развернуть</span>
+          </div>
+          <div class="thinking-content"></div>
+        `;
+        row.appendChild(activeThinkingBox);
+        chatContainer.appendChild(row);
+        thinkingContentEl = activeThinkingBox.querySelector('.thinking-content');
+      }
+      thinkingContentEl.textContent += delta;
+      scrollToBottom();
+    }
+
+    let currentAssistantRow = null;
+    let currentAssistantRawContent = '';
+
+    function handleContentChunk(delta) {
+      activeThinkingBox = null;
+      if (!currentAssistantRow) {
+        currentAssistantRow = document.createElement('div');
+        currentAssistantRow.className = 'msg-row';
+        activeAssistantBox = document.createElement('div');
+        activeAssistantBox.className = 'assistant-text-box';
+        currentAssistantRow.appendChild(activeAssistantBox);
+        chatContainer.appendChild(currentAssistantRow);
+      }
+      currentAssistantRawContent += delta;
+      activeAssistantBox.innerHTML = marked.parse(currentAssistantRawContent);
+      scrollToBottom();
+    }
+
+    function finalizeCurrentAssistantBox() {
+      currentAssistantRow = null;
+      activeAssistantBox = null;
+      currentAssistantRawContent = '';
+    }
+
+    let toolStartTime = 0;
+    let toolTimerInterval = null;
+
+    function handleToolStart(tool, cmd) {
+      activeThinkingBox = null;
+      finalizeCurrentAssistantBox();
+
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      activeToolCard = document.createElement('div');
+      activeToolCard.className = 'tool-card';
+
+      toolStartTime = Date.now();
+      activeToolCard.innerHTML = `
+        <div class="tool-header">
+          <div class="tool-header-left">
+            <span class="tool-tag">${escapeHtml(tool)}</span>
+            <span class="tool-cmd-preview">${escapeHtml(cmd.slice(0, 60))}</span>
+          </div>
+          <span class="tool-timer" id="live-tool-timer">0.0s</span>
+        </div>
+        <div class="tool-cmd-line">$ ${escapeHtml(cmd)}</div>
+        <div class="tool-output-box" style="color: var(--text-muted);"><div class="spinner" style="display:inline-block; vertical-align:middle; margin-right:6px;"></div>Выполнение команды в терминале...</div>
+      `;
+      row.appendChild(activeToolCard);
+      chatContainer.appendChild(row);
+      scrollToBottom();
+
+      const timerEl = activeToolCard.querySelector('#live-tool-timer');
+      toolTimerInterval = setInterval(() => {
+        const sec = ((Date.now() - toolStartTime) / 1000).toFixed(1);
+        if (timerEl) timerEl.textContent = `${sec}s`;
+      }, 100);
+    }
+
+    function handleToolDone(tool, cmd, output) {
+      if (toolTimerInterval) clearInterval(toolTimerInterval);
+      if (!activeToolCard) return;
+
+      const dur = ((Date.now() - toolStartTime) / 1000).toFixed(2);
+      const timerEl = activeToolCard.querySelector('#live-tool-timer');
+      if (timerEl) timerEl.textContent = `${dur}s (готово)`;
+
+      const outBox = activeToolCard.querySelector('.tool-output-box');
+      if (outBox) {
+        outBox.textContent = output;
+      }
+      activeToolCard = null;
+      scrollToBottom();
+    }
+
+    function finalizeCurrentToolCard() {
+      if (toolTimerInterval) clearInterval(toolTimerInterval);
+      activeToolCard = null;
+    }
+
+    // Controls
+    btnSend.onclick = sendMessage;
+    chatInput.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    };
+
+    btnNewChat.onclick = async () => {
+      const res = await fetch('/api/sessions/new', { method: 'POST' });
+      const s = await res.json();
+      selectSession(s.id);
+    };
+
+    btnToggleSidebar.onclick = () => {
+      sidebar.classList.toggle('collapsed');
+    };
+
+    // Startup
+    fetchStatus();
+    loadSessions();
+    setInterval(fetchStatus, 15000);
+  </script>
+</body>
+</html>

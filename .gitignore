@@ -1,0 +1,25 @@
+# Environment and secret keys
+.env
+.env.local
+
+# Sessions data and history
+data/sessions/
+*.json
+!package.json
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Logs and temporary files
+*.log
+cf*.log
+*.pid
+
+# OS generated files
+.DS_Store
+Thumbs.db

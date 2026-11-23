@@ -1,0 +1,12 @@
+services:
+  nano-agent:
+    build: .
+    container_name: nano-agent
+    restart: unless-stopped
+    ports:
+      - "5051:5051"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    environment:
+      - PORT=5051
