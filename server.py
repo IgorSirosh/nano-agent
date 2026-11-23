@@ -217,14 +217,29 @@ def create_new_session(title: str = "Новый диалог (Дистиллят
 
 def run_bash_cmd(cmd: str) -> str:
     try:
-        proc = subprocess.run(
-            cmd,
-            shell=True,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
+        is_win = os.name == "nt"
+        if is_win:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120
+            )
+        else:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                executable="/bin/bash" if os.path.exists("/bin/bash") else None,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120
+            )
         out = proc.stdout
         err = proc.stderr
         res = ""
