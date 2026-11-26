@@ -22,6 +22,9 @@ def get_session_lock(session_id: str) -> asyncio.Lock:
 
 
 def default_cwd() -> str:
+    env_cwd = os.environ.get("DEFAULT_CWD")
+    if env_cwd and Path(env_cwd).is_dir():
+        return env_cwd
     try:
         home = Path.home()
         if home.exists() and home.is_dir():

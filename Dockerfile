@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     git \
     jq \
+    ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -17,9 +18,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Создание директории данных
-RUN mkdir -p data/sessions
+# Создание директорий для данных и изолированного workspace
+RUN mkdir -p data/sessions /workspace && chmod 777 /workspace
 
 EXPOSE 5051
+
+ENV DEFAULT_CWD=/workspace
+ENV PYTHONUNBUFFERED=1
 
 CMD ["python3", "server.py"]

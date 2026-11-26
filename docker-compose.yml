@@ -1,12 +1,16 @@
 services:
   nano-agent:
     build: .
-    container_name: nano-agent
+    container_name: nano-agent-sandbox
     restart: unless-stopped
     ports:
       - "5051:5051"
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env
+      - ./keys.json:/app/keys.json
+      - ./workspace:/workspace
     environment:
       - PORT=5051
+      - DEFAULT_CWD=/workspace
+      - PYTHONUNBUFFERED=1

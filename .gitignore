@@ -5,6 +5,7 @@ keys.json
 
 # Sessions data and history
 data/sessions/
+workspace/
 *.json
 !package.json
 
