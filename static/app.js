@@ -632,16 +632,16 @@ if (btnAddKeypair) {
     const label = newKeyLabel.value.trim();
 
     if (!apiKey) {
-      showStatusBanner(keypoolAddStatus, 'Укажите основной API-ключ', false);
+      showBanner(keypoolAddStatus, false, 'Укажите основной API-ключ');
       return;
     }
     if (!adminKey) {
-      showStatusBanner(keypoolAddStatus, 'Укажите Admin Key (для баланса и проверки)', false);
+      showBanner(keypoolAddStatus, false, 'Укажите Admin Key (для баланса и проверки)');
       return;
     }
 
     btnAddKeypair.disabled = true;
-    showStatusBanner(keypoolAddStatus, 'Проверка ключей и баланса...', true);
+    showBanner(keypoolAddStatus, true, 'Проверка ключей и баланса...');
 
     try {
       const res = await fetch('/api/keys', {
@@ -659,14 +659,14 @@ if (btnAddKeypair) {
         throw new Error(data.detail || 'Ошибка добавления пары ключей');
       }
 
-      showStatusBanner(keypoolAddStatus, `Ключ «${data.pair.label}» успешно добавлен! Баланс: ${data.pair.formatted_balance}`, true);
+      showBanner(keypoolAddStatus, true, `Ключ «${data.pair.label}» успешно добавлен! Баланс: ${data.pair.formatted_balance}`);
       newKeyMain.value = '';
       newKeyAdmin.value = '';
       newKeyLabel.value = '';
       renderKeyPool(data.pool);
       fetchStatus();
     } catch (e) {
-      showStatusBanner(keypoolAddStatus, e.message || 'Ошибка сети при добавлении', false);
+      showBanner(keypoolAddStatus, false, e.message || 'Ошибка сети при добавлении');
     } finally {
       btnAddKeypair.disabled = false;
     }
