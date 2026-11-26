@@ -144,6 +144,8 @@ async def get_status():
             "total": pool_status["total_pairs"],
             "ready": pool_status["ready_pairs_count"],
             "active_label": (pool_status.get("active_pair") or {}).get("label"),
+            "total_balance": pool_status["total_balance"],
+            "formatted_total_balance": pool_status["formatted_total_balance"],
             "auto_rotate": pool_status["auto_rotate"],
             "auto_purge_exhausted": pool_status["auto_purge_exhausted"],
         },

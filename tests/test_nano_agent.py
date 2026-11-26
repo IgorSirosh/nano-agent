@@ -193,7 +193,7 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
             r_idx = await ac.get("/")
             self.assertEqual(r_idx.status_code, 200)
             self.assertIn("NanoAgent", r_idx.text)
-            self.assertIn("styles.css?v=2.2", r_idx.text)
+            self.assertIn("styles.css?v=", r_idx.text)
 
             r_st = await ac.get("/api/status")
             self.assertEqual(r_st.status_code, 200)

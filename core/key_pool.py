@@ -244,6 +244,10 @@ class KeyPoolManager:
             pairs_list.sort(key=lambda x: (0 if x["id"] == self.active_pair_id else 1, -x["created_at"]))
 
             positive_count = sum(1 for p in self.pairs.values() if p.balance is not None and p.balance > 0 and p.status != "exhausted")
+            total_balance = round(
+                sum(p.balance for p in self.pairs.values() if p.balance is not None and p.balance > 0 and p.status != "exhausted"),
+                6,
+            )
             return {
                 "auto_rotate": self.auto_rotate,
                 "auto_purge_exhausted": self.auto_purge_exhausted,
@@ -251,6 +255,8 @@ class KeyPoolManager:
                 "active_pair": active_pair.to_dict(include_secrets=False) if active_pair else None,
                 "total_pairs": len(self.pairs),
                 "ready_pairs_count": positive_count,
+                "total_balance": total_balance,
+                "formatted_total_balance": f"${total_balance:.4f}",
                 "pairs": pairs_list,
             }
 

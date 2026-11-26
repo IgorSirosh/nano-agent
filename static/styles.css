@@ -1693,6 +1693,20 @@ button.pill-balance:hover {
   background: #f59e0b;
 }
 
+.pill-total-balance {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding-left: 5px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.badge-accent {
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
 .pool-dot.danger {
   background: #ef4444;
 }

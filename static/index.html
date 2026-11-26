@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NanoAgent — Автономный AI-ассистент</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.2">
+  <link rel="stylesheet" href="/static/styles.css?v=2.4">
   <script src="/static/marked.min.js"></script>
 </head>
 <body>
@@ -54,9 +54,10 @@
           <span class="distill-engine-tag" id="distill-engine-tag">Gemini · $0</span>
         </button>
 
-        <button type="button" class="pill-balance tabular" id="pill-balance" title="Баланс активного API и статус пула (нажмите для открытия пула)">
+        <button type="button" class="pill-balance tabular" id="pill-balance" title="Баланс активного API и общий баланс пула (нажмите для открытия пула)">
           <span class="pool-dot" id="pool-dot"></span>
-          <span id="pill-balance-text">—</span>
+          <span id="pill-balance-text" title="Баланс текущего активного аккаунта">—</span>
+          <span class="pill-total-balance hidden" id="pill-total-balance" title="Общий баланс всех аккаунтов в пуле"></span>
           <span class="pool-count-badge" id="pool-count-badge" title="Количество ключей в пуле">1</span>
         </button>
 
@@ -294,7 +295,10 @@
 
         <div class="keypool-list-header">
           <span>Ключи в пуле (активный и резерв)</span>
-          <span id="keypool-counter-badge" class="badge">1 пара</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span id="keypool-total-balance-badge" class="badge badge-accent" title="Общий баланс всех аккаунтов в пуле">Σ $0.0000</span>
+            <span id="keypool-counter-badge" class="badge">1 пара</span>
+          </div>
         </div>
 
         <div id="keypool-cards" class="keypool-cards-container">
@@ -379,6 +383,6 @@
     </div>
   </dialog>
 
-  <script src="/static/app.js?v=2.3"></script>
+  <script src="/static/app.js?v=2.4"></script>
 </body>
 </html>

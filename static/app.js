@@ -142,6 +142,7 @@ const promptSaveStatus = document.getElementById('prompt-save-status');
 const tabPanelKeys = document.getElementById('tab-panel-keys');
 const keysTabBadge = document.getElementById('keys-tab-badge');
 const keypoolCounterBadge = document.getElementById('keypool-counter-badge');
+const keypoolTotalBalanceBadge = document.getElementById('keypool-total-balance-badge');
 const keypoolCards = document.getElementById('keypool-cards');
 const keypoolAutorotateCheck = document.getElementById('keypool-autorotate-check');
 const keypoolAutopurgeCheck = document.getElementById('keypool-autopurge-check');
@@ -153,6 +154,7 @@ const newKeyLabel = document.getElementById('new-key-label');
 const btnAddKeypair = document.getElementById('btn-add-keypair');
 const keypoolAddStatus = document.getElementById('keypool-add-status');
 const pillBalanceText = document.getElementById('pill-balance-text');
+const pillTotalBalance = document.getElementById('pill-total-balance');
 const poolCountBadge = document.getElementById('pool-count-badge');
 const poolDot = document.getElementById('pool-dot');
 
@@ -442,6 +444,9 @@ function renderKeyPool(data) {
 
   if (keypoolCounterBadge) {
     keypoolCounterBadge.textContent = `${total} ${total === 1 ? 'пара' : 'пар'}`;
+  }
+  if (keypoolTotalBalanceBadge) {
+    keypoolTotalBalanceBadge.textContent = `Общий: ${data.formatted_total_balance || '$0.0000'}`;
   }
   if (keysTabBadge) {
     keysTabBadge.textContent = String(total);
@@ -983,18 +988,30 @@ async function fetchStatus() {
     }
 
     if (data.keys_pool) {
+      const totalPairs = data.keys_pool.total || 0;
+      const readyPairs = data.keys_pool.ready || 0;
+      const totalBalStr = data.keys_pool.formatted_total_balance || '$0.0000';
+
+      if (pillTotalBalance) {
+        if (totalPairs > 1) {
+          pillTotalBalance.textContent = `Σ ${totalBalStr}`;
+          pillTotalBalance.classList.remove('hidden');
+        } else {
+          pillTotalBalance.classList.add('hidden');
+        }
+      }
       if (poolCountBadge) {
-        poolCountBadge.textContent = `${data.keys_pool.ready || 1}/${data.keys_pool.total || 1}`;
-        poolCountBadge.title = `Всего ключей: ${data.keys_pool.total}, с балансом: ${data.keys_pool.ready}`;
+        poolCountBadge.textContent = `${readyPairs}/${totalPairs || 1}`;
+        poolCountBadge.title = `Всего ключей: ${totalPairs}, с балансом: ${readyPairs}`;
       }
       if (keysTabBadge) {
-        keysTabBadge.textContent = String(data.keys_pool.total || 1);
+        keysTabBadge.textContent = String(totalPairs || 1);
       }
       if (poolDot) {
-        poolDot.className = 'pool-dot' + (data.keys_pool.ready === 0 ? ' danger' : (data.balance === '$0.0000' ? ' warning' : ''));
+        poolDot.className = 'pool-dot' + (readyPairs === 0 ? ' danger' : (data.balance === '$0.0000' ? ' warning' : ''));
       }
       if (pillBalance && data.keys_pool.active_label) {
-        pillBalance.title = `Активен: ${data.keys_pool.active_label} (${data.balance || '—'}). В резерве: ${Math.max(0, (data.keys_pool.ready || 1) - 1)}. Нажмите для ротации и пула.`;
+        pillBalance.title = `Текущий: ${data.keys_pool.active_label} (${data.balance || '—'}) | Общий баланс пула: ${totalBalStr} | В резерве: ${Math.max(0, readyPairs - 1)}. Нажмите для открытия пула.`;
       }
     }
 
