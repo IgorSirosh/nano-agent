@@ -1,11 +1,10 @@
-﻿# PowerShell 1-Click Installer for NanoAgent
+﻿# PowerShell 1-Click Installer for NanoAgent v2.0
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "   🧠 Установка NanoAgent для Windows     " -ForegroundColor Cyan
+Write-Host "   🧠 Установка NanoAgent v2.0 (Windows)  " -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
-# 1. Проверка Python
 $pythonCmd = (Get-Command python -ErrorAction SilentlyContinue).Source
 if (-not $pythonCmd) {
     $pythonCmd = (Get-Command py -ErrorAction SilentlyContinue).Source
@@ -13,20 +12,18 @@ if (-not $pythonCmd) {
 
 if (-not $pythonCmd) {
     Write-Host "❌ Python не найден в системе!" -ForegroundColor Red
-    Write-Host "Пожалуйста, установите Python 3.10+ с https://www.python.org/downloads/" -ForegroundColor Yellow
-    Write-Host "(ОБЯЗАТЕЛЬНО отметьте галочку: 'Add Python to PATH' при установке)" -ForegroundColor Yellow
+    Write-Host "Установите Python 3.10+ с https://www.python.org/downloads/" -ForegroundColor Yellow
+    Write-Host "(ОБЯЗАТЕЛЬНО отметьте галочку 'Add Python to PATH')" -ForegroundColor Yellow
     Pause
     exit 1
 }
 
-# 2. Директория установки
 $installDir = Join-Path $HOME ".nano-agent"
 if (-not (Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 }
 Set-Location $installDir
 
-# 3. Скачивание кода
 if (Get-Command git -ErrorAction SilentlyContinue) {
     if (Test-Path (Join-Path $installDir ".git")) {
         Write-Host "📦 Обновление существующей версии..." -ForegroundColor Green
@@ -44,12 +41,31 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     Remove-Item $zipFile -Force
     $extracted = Join-Path $installDir "nano-agent-main"
     if (Test-Path $extracted) {
-        Get-ChildItem -Path $extracted | Move-Item -Destination $installDir -Force
+        Get-ChildItem -Path $extracted -Force | Move-Item -Destination $installDir -Force
         Remove-Item $extracted -Recurse -Force
     }
 }
 
-Write-Host "🚀 Запуск NanoAgent..." -ForegroundColor Cyan
+Write-Host "🚀 Запуск сервера NanoAgent..." -ForegroundColor Cyan
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c start.bat"
-Start-Sleep -Seconds 2
+
+Write-Host "⏳ Ожидание готовности http://localhost:5051/api/status (до 45 сек)..." -ForegroundColor Yellow
+$ready = $false
+for ($i = 0; $i -lt 45; $i++) {
+    try {
+        $resp = Invoke-WebRequest -Uri "http://localhost:5051/api/status" -UseBasicParsing -TimeoutSec 2
+        if ($resp.StatusCode -eq 200) {
+            $ready = $true
+            break
+        }
+    } catch {
+        Start-Sleep -Seconds 1
+    }
+}
+
+if ($ready) {
+    Write-Host "✅ NanoAgent готов к работе! Открываем браузер..." -ForegroundColor Green
+} else {
+    Write-Host "⚠️ Сервер запускается дольше обычного, открываем браузер..." -ForegroundColor Yellow
+}
 Start-Process "http://localhost:5051"
