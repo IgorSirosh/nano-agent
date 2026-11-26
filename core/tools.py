@@ -11,6 +11,65 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# ---------------------------------------------------------------------------
+# bwrap sandbox configuration
+# ---------------------------------------------------------------------------
+_WORKSPACE_HOST = Path(
+    os.environ.get(
+        "AGENT_WORKSPACE",
+        str(Path(__file__).parent.parent / "workspace"),
+    )
+).resolve()
+_WORKSPACE_HOST.mkdir(parents=True, exist_ok=True)
+
+# bwrap binary path (None on Windows or if bwrap not installed)
+_BWRAP_BIN: Optional[str] = shutil.which("bwrap") if os.name != "nt" else None
+
+# Set AGENT_BWRAP_DISABLE=1 to turn off sandboxing (useful for tests/debug)
+_BWRAP_ENABLED: bool = (
+    _BWRAP_BIN is not None
+    and os.environ.get("AGENT_BWRAP_DISABLE", "0").strip() not in ("1", "true", "yes")
+)
+
+
+def _bwrap_prefix(cwd_marker_host: Path) -> List[str]:
+    """Return bwrap argv prefix for a sandboxed bash call.
+
+    Strategy: bind the entire filesystem read-only (--ro-bind / /),
+    then selectively override with writable mounts:
+      - /workspace  -> WORKSPACE_HOST (rw, persistent)
+      - /tmp        -> tmpfs (rw, ephemeral)
+      - /home       -> tmpfs (empty — hides /home/laki completely)
+      - /root       -> tmpfs (empty)
+      - marker_dir  -> rw bind so the EXIT trap can write the cwd marker
+
+    /proc and /dev are overridden with pseudo-filesystems.
+    """
+    marker_dir = str(cwd_marker_host.parent)
+    # Find the actual bash binary
+    bash_bin = shutil.which("bash") or "/usr/bin/bash"
+    cmd: List[str] = [
+        str(_BWRAP_BIN),
+        # Bind entire host FS read-only — catches all system libs/symlinks
+        "--ro-bind", "/", "/",
+        # Override pseudo-filesystems
+        "--proc", "/proc",
+        "--dev", "/dev",
+        # Hide sensitive home dirs
+        "--tmpfs", "/home",
+        "--tmpfs", "/root",
+        # Writable temp
+        "--tmpfs", "/tmp",
+        # Writable workspace
+        "--bind", str(_WORKSPACE_HOST), str(_WORKSPACE_HOST),
+        # Writable cwd-marker directory for EXIT trap
+        "--bind", marker_dir, marker_dir,
+        "--",
+        bash_bin, "-c",
+    ]
+    return cmd
+
+
 READ_FILE_TOOL = {
     "type": "function",
     "function": {
@@ -159,12 +218,48 @@ def is_execution_approved(user_text: str, explicit_flag: bool = False) -> bool:
 
 
 def _resolve_path(raw_path: Optional[str], session_cwd: str) -> Path:
-    base = Path(session_cwd) if session_cwd else Path.cwd()
+    default_base = _WORKSPACE_HOST if _BWRAP_ENABLED else Path.cwd()
+    base = Path(session_cwd) if session_cwd else default_base
     raw = (raw_path or ".").strip() or "."
     p = Path(raw).expanduser()
     if not p.is_absolute():
         p = base / p
     return p.resolve()
+
+
+_PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+
+
+def _check_sandbox_path(p: Path, write: bool = False) -> Optional[str]:
+    """Enforce sandbox filesystem boundaries for Python-level file tools.
+
+    Returns an error message if access is denied, or None if allowed.
+    """
+    if not _BWRAP_ENABLED:
+        return None
+
+    resolved = p.resolve()
+    # 1. Block home / root directories completely
+    blocked_roots = [Path("/home"), Path("/root")]
+    try:
+        blocked_roots.append(Path.home().resolve())
+    except Exception:
+        pass
+
+    for root in blocked_roots:
+        if resolved == root or resolved.is_relative_to(root):
+            return f"[ошибка доступа (sandbox): каталог {root} скрыт и недоступен]"
+
+    # 2. Block reading/writing project secrets outside workspace
+    if not resolved.is_relative_to(_WORKSPACE_HOST):
+        if resolved.name in ("keys.json", ".env") or resolved.is_relative_to(_PROJECT_ROOT / "data"):
+            return f"[ошибка доступа (sandbox): путь {resolved} защищён]"
+
+    # 3. For write operations, restrict strictly to _WORKSPACE_HOST
+    if write and not resolved.is_relative_to(_WORKSPACE_HOST):
+        return f"[ошибка доступа (sandbox): запись разрешена только в {_WORKSPACE_HOST}]"
+
+    return None
 
 
 def _format_size(num_bytes: int) -> str:
@@ -198,6 +293,8 @@ def _tool_read_file(args: Dict[str, Any], session_cwd: str) -> dict:
     if not raw_path:
         return {"output": "[ошибка: не указан параметр path]", "exit_code": 1}
     p = _resolve_path(raw_path, session_cwd)
+    if err := _check_sandbox_path(p, write=False):
+        return {"output": err, "exit_code": 1}
     if not p.exists():
         return {"output": f"[ошибка: файл не найден: {p}]", "exit_code": 1}
     if not p.is_file():
@@ -245,6 +342,8 @@ def _tool_write_file(args: Dict[str, Any], session_cwd: str) -> dict:
         return {"output": "[ошибка: не указан параметр content]", "exit_code": 1}
 
     p = _resolve_path(raw_path, session_cwd)
+    if err := _check_sandbox_path(p, write=True):
+        return {"output": err, "exit_code": 1}
     old_text: Optional[str] = None
     if p.exists() and p.is_file() and p.stat().st_size < 512_000:
         try:
@@ -301,6 +400,8 @@ def _tool_edit_file(args: Dict[str, Any], session_cwd: str) -> dict:
         return {"output": "[ошибка: old_text не может быть пустым]", "exit_code": 1}
 
     p = _resolve_path(raw_path, session_cwd)
+    if err := _check_sandbox_path(p, write=True):
+        return {"output": err, "exit_code": 1}
     if not p.exists() or not p.is_file():
         return {"output": f"[ошибка: файл не найден: {p}]", "exit_code": 1}
 
@@ -356,6 +457,8 @@ def _tool_edit_file(args: Dict[str, Any], session_cwd: str) -> dict:
 
 def _tool_list_dir(args: Dict[str, Any], session_cwd: str) -> dict:
     p = _resolve_path(args.get("path", "."), session_cwd)
+    if err := _check_sandbox_path(p, write=False):
+        return {"output": err, "exit_code": 1}
     max_depth = max(1, min(5, int(args.get("max_depth") or 2)))
 
     if not p.exists():
@@ -481,6 +584,8 @@ async def _tool_search_files(
         return {"output": "[ошибка: не указан параметр pattern]", "exit_code": 1}
 
     target = _resolve_path(args.get("path", "."), session_cwd)
+    if err := _check_sandbox_path(target, write=False):
+        return {"output": err, "exit_code": 1}
     if not target.exists():
         return {"output": f"[ошибка: путь не существует: {target}]", "exit_code": 1}
 
@@ -606,6 +711,7 @@ async def _tool_bash(
 
     cwd_path = session_cwd if (session_cwd and Path(session_cwd).is_dir()) else os.getcwd()
     cwd_marker = Path(tempfile.gettempdir()) / f"nanoagent_cwd_{uuid.uuid4().hex[:8]}"
+    _is_bwrap = False  # will be set to True in the bwrap branch below
 
     try:
         if os.name == "nt":
@@ -626,17 +732,46 @@ async def _tool_bash(
                 stderr=asyncio.subprocess.PIPE,
             )
         else:
-            wrapped = f"trap 'pwd > \"{cwd_marker}\" 2>/dev/null || true' EXIT\n{cmd}"
-            executable = "/bin/bash" if os.path.exists("/bin/bash") else None
-            proc = await asyncio.create_subprocess_shell(
-                wrapped,
-                executable=executable,
-                cwd=cwd_path,
-                stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                start_new_session=True,
-            )
+            if _BWRAP_ENABLED:
+                # --- bwrap sandbox ---
+                # cwd inside bwrap is the real host path (we use --ro-bind / /).
+                # Fallback to WORKSPACE_HOST if cwd is outside workspace.
+                try:
+                    Path(cwd_path).relative_to(_WORKSPACE_HOST)
+                    effective_cwd = cwd_path
+                except ValueError:
+                    effective_cwd = str(_WORKSPACE_HOST)
+
+                # The EXIT trap writes the cwd marker to the host path.
+                # marker dir is bind-mounted rw inside bwrap via _bwrap_prefix.
+                wrapped = (
+                    f"cd {effective_cwd!r} 2>/dev/null || cd {str(_WORKSPACE_HOST)!r}\n"
+                    f"trap 'pwd > \"{cwd_marker}\" 2>/dev/null || true' EXIT\n"
+                    f"{cmd}"
+                )
+                bwrap_cmd = _bwrap_prefix(cwd_marker) + [wrapped]
+                proc = await asyncio.create_subprocess_exec(
+                    *bwrap_cmd,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    start_new_session=True,
+                )
+                _is_bwrap = True
+            else:
+                # --- plain execution (no sandbox) ---
+                wrapped = f"trap 'pwd > \"{cwd_marker}\" 2>/dev/null || true' EXIT\n{cmd}"
+                executable = "/bin/bash" if os.path.exists("/bin/bash") else None
+                proc = await asyncio.create_subprocess_shell(
+                    wrapped,
+                    executable=executable,
+                    cwd=cwd_path,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    start_new_session=True,
+                )
+                _is_bwrap = False
 
         stdout_b, stderr_b, cancelled, timed_out = await _wait_proc_with_cancel(proc, timeout, cancel_event)
 
@@ -644,6 +779,7 @@ async def _tool_bash(
         if cwd_marker.exists():
             try:
                 detected = cwd_marker.read_text(encoding="utf-8", errors="replace").strip().lstrip("\ufeff")
+                # In bwrap, paths are real host paths (--ro-bind / /), no translation needed.
                 if detected and Path(detected).is_dir() and detected != cwd_path:
                     new_cwd = detected
             except Exception:

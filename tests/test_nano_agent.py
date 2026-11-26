@@ -23,12 +23,14 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
         self.orig_env_file = cfg_mod.ENV_FILE
         self.orig_prompt_file = cfg_mod.SYSTEM_PROMPT_FILE
         self.orig_sessions_dir = storage_mod.SESSIONS_DIR
+        self.orig_workspace = tools_mod._WORKSPACE_HOST
         self.orig_environ = os.environ.copy()
 
         cfg_mod.ENV_FILE = self.tmp_dir / ".env"
         cfg_mod.SYSTEM_PROMPT_FILE = self.tmp_dir / "system_prompt.txt"
         storage_mod.SESSIONS_DIR = self.tmp_dir / "sessions"
         storage_mod.SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        tools_mod._WORKSPACE_HOST = self.tmp_dir.resolve()
         for k in ("BASE_URL", "ABLIT_KEY", "OPENROUTER_API_KEY", "ADMIN_KEY", "PORT"):
             os.environ.pop(k, None)
         cfg_mod.invalidate_balance_cache()
@@ -37,6 +39,7 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
         cfg_mod.ENV_FILE = self.orig_env_file
         cfg_mod.SYSTEM_PROMPT_FILE = self.orig_prompt_file
         storage_mod.SESSIONS_DIR = self.orig_sessions_dir
+        tools_mod._WORKSPACE_HOST = self.orig_workspace
         os.environ.clear()
         os.environ.update(self.orig_environ)
         cfg_mod.invalidate_balance_cache()
@@ -390,6 +393,32 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
         self.assertLess(elapsed, 3.0)
         self.assertEqual(b_cancel["exit_code"], -1)
         self.assertIn("остановлено", b_cancel["output"])
+
+    async def test_bwrap_sandbox_isolation(self) -> None:
+        if not tools_mod._BWRAP_ENABLED:
+            self.skipTest("bwrap not enabled")
+
+        # 1. /home is hidden inside bash
+        res_home = await tools_mod.execute_tool("bash", {"command": "ls -A /home"}, str(self.tmp_dir))
+        self.assertEqual(res_home["exit_code"], 0)
+        self.assertEqual(res_home["output"].strip(), "[пустой вывод / success]")
+
+        # 2. /etc is read-only inside bash
+        res_ro = await tools_mod.execute_tool("bash", {"command": "touch /etc/bwrap_probe 2>&1"}, str(self.tmp_dir))
+        self.assertNotEqual(res_ro["exit_code"], 0)
+
+        # 3. Python file tools block /home and writes outside workspace
+        r_home = await tools_mod.execute_tool("read_file", {"path": "/home"}, str(self.tmp_dir))
+        self.assertEqual(r_home["exit_code"], 1)
+        self.assertIn("sandbox", r_home["output"])
+
+        w_out = await tools_mod.execute_tool(
+            "write_file",
+            {"path": "/var/tmp/outside_sandbox.txt", "content": "x"},
+            str(self.tmp_dir),
+        )
+        self.assertEqual(w_out["exit_code"], 1)
+        self.assertIn("sandbox", w_out["output"])
 
 
 if __name__ == "__main__":

@@ -25,13 +25,14 @@ def default_cwd() -> str:
     env_cwd = os.environ.get("DEFAULT_CWD")
     if env_cwd and Path(env_cwd).is_dir():
         return env_cwd
-    try:
-        home = Path.home()
-        if home.exists() and home.is_dir():
-            return str(home)
-    except Exception:
-        pass
-    return os.getcwd()
+    ws = os.environ.get("AGENT_WORKSPACE")
+    if ws:
+        ws_path = Path(ws).resolve()
+        ws_path.mkdir(parents=True, exist_ok=True)
+        return str(ws_path)
+    local_ws = (BASE_DIR / "workspace").resolve()
+    local_ws.mkdir(parents=True, exist_ok=True)
+    return str(local_ws)
 
 
 def estimate_tokens(text: Optional[str]) -> int:
