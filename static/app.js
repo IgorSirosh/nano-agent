@@ -30,6 +30,7 @@ const SVG_ICONS = {
   fileSearch: '<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.268 21a2 2 0 0 0 1.727 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><circle cx="5" cy="14" r="3"/><path d="m9 18-1.5-1.5"/>',
   shieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
   key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
   fileCode: '<path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>',
   alertCircle: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
 };
@@ -136,6 +137,24 @@ const systemPromptEditor = document.getElementById('system-prompt-editor');
 const promptSaveBtn = document.getElementById('prompt-save-btn');
 const promptResetBtn = document.getElementById('prompt-reset-btn');
 const promptSaveStatus = document.getElementById('prompt-save-status');
+
+// Key Pool & Rotation DOM Elements
+const tabPanelKeys = document.getElementById('tab-panel-keys');
+const keysTabBadge = document.getElementById('keys-tab-badge');
+const keypoolCounterBadge = document.getElementById('keypool-counter-badge');
+const keypoolCards = document.getElementById('keypool-cards');
+const keypoolAutorotateCheck = document.getElementById('keypool-autorotate-check');
+const keypoolAutopurgeCheck = document.getElementById('keypool-autopurge-check');
+const btnCheckAllKeys = document.getElementById('btn-check-all-keys');
+const btnPurgeExhaustedKeys = document.getElementById('btn-purge-exhausted-keys');
+const newKeyMain = document.getElementById('new-key-main');
+const newKeyAdmin = document.getElementById('new-key-admin');
+const newKeyLabel = document.getElementById('new-key-label');
+const btnAddKeypair = document.getElementById('btn-add-keypair');
+const keypoolAddStatus = document.getElementById('keypool-add-status');
+const pillBalanceText = document.getElementById('pill-balance-text');
+const poolCountBadge = document.getElementById('pool-count-badge');
+const poolDot = document.getElementById('pool-dot');
 
 // CWD / Rename Dialog
 const cwdModal = document.getElementById('cwd-modal');
@@ -358,6 +377,10 @@ for (const tab of settingsTabs) {
     const which = tab.dataset.tab;
     tabPanelApi.classList.toggle('hidden', which !== 'api');
     tabPanelPrompt.classList.toggle('hidden', which !== 'prompt');
+    if (tabPanelKeys) tabPanelKeys.classList.toggle('hidden', which !== 'keys');
+    if (which === 'keys') {
+      loadKeyPool();
+    }
   };
 }
 
@@ -396,15 +419,280 @@ btnClearGeminiKey.onclick = () => {
   btnClearGeminiKey.classList.add('hidden');
 };
 
-async function openSettingsModal() {
+let currentKeyPoolData = null;
+
+async function loadKeyPool() {
+  if (!keypoolCards) return;
+  try {
+    const res = await fetch('/api/keys');
+    if (!res.ok) return;
+    const data = await res.json();
+    currentKeyPoolData = data;
+    renderKeyPool(data);
+  } catch (e) {
+    console.error('Ошибка загрузки пула ключей:', e);
+  }
+}
+
+function renderKeyPool(data) {
+  if (!keypoolCards) return;
+  const pairs = data.pairs || [];
+  const total = data.total_pairs || pairs.length;
+  const ready = data.ready_pairs_count || 0;
+
+  if (keypoolCounterBadge) {
+    keypoolCounterBadge.textContent = `${total} ${total === 1 ? 'пара' : 'пар'}`;
+  }
+  if (keysTabBadge) {
+    keysTabBadge.textContent = String(total);
+  }
+  if (poolCountBadge) {
+    poolCountBadge.textContent = `${ready}/${total}`;
+    poolCountBadge.title = `Всего ключей: ${total}, готово к работе: ${ready}`;
+  }
+
+  if (keypoolAutorotateCheck) {
+    keypoolAutorotateCheck.checked = Boolean(data.auto_rotate);
+  }
+  if (keypoolAutopurgeCheck) {
+    keypoolAutopurgeCheck.checked = Boolean(data.auto_purge_exhausted);
+  }
+
+  keypoolCards.replaceChildren();
+
+  if (pairs.length === 0) {
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'keypair-card';
+    emptyEl.style.textAlign = 'center';
+    emptyEl.style.padding = '20px';
+    emptyEl.style.color = 'var(--text-muted)';
+    emptyEl.textContent = 'Пул ключей пуст. Добавьте первую пару (Основной API + Admin Key) ниже.';
+    keypoolCards.appendChild(emptyEl);
+    return;
+  }
+
+  for (const p of pairs) {
+    const card = document.createElement('div');
+    const isActive = p.id === data.active_pair_id || p.status === 'active';
+    const isExhausted = p.status === 'exhausted' || (p.balance !== null && p.balance <= 0);
+
+    card.className = `keypair-card${isActive ? ' active' : ''}${isExhausted ? ' exhausted' : ''}`;
+
+    let statusTagClass = 'status-tag-standby';
+    let statusLabel = 'Резерв';
+    if (isActive) {
+      statusTagClass = 'status-tag-active';
+      statusLabel = 'Активен';
+    } else if (isExhausted) {
+      statusTagClass = 'status-tag-exhausted';
+      statusLabel = 'Исчерпан';
+    }
+
+    const balFormatted = p.formatted_balance || (p.balance !== null ? `$${Number(p.balance).toFixed(4)}` : 'Не проверен');
+    const balClass = isExhausted ? 'keypair-balance-tag zero' : 'keypair-balance-tag';
+
+    card.innerHTML = `
+      <div class="keypair-card-head">
+        <div class="keypair-title-box">
+          <span class="keypair-label">${escapeHtml(p.label || 'Без названия')}</span>
+          <span class="keypair-status-tag ${statusTagClass}">${statusLabel}</span>
+        </div>
+        <div class="${balClass}">${escapeHtml(balFormatted)}</div>
+      </div>
+      <div class="keypair-card-keys">
+        <div class="key-sub-box" title="Основной API ключ для выполнения запросов">
+          <span class="key-name">API:</span>
+          <span>${escapeHtml(p.masked_api_key || '***')}</span>
+        </div>
+        <div class="key-sub-box" title="Admin Key для мониторинга баланса">
+          <span class="key-name">Admin:</span>
+          <span>${escapeHtml(p.masked_admin_key || '***')}</span>
+        </div>
+      </div>
+      <div class="keypair-card-foot">
+        ${!isActive ? `<button type="button" class="btn-xs btn-activate-pair" data-id="${p.id}" title="Сделать этот ключ активным вручную">${iconSvg('play', 12)}<span>Выбрать активным</span></button>` : '<span style="font-size:0.72rem;color:#34d399;display:inline-flex;align-items:center;gap:4px;">' + iconSvg('check', 12) + 'Используется сейчас</span>'}
+        <button type="button" class="btn-xs btn-xs-danger btn-delete-pair" data-id="${p.id}" title="Удалить этот ключ из пула">${iconSvg('trash', 12)}<span>Удалить</span></button>
+      </div>
+    `;
+
+    const actBtn = card.querySelector('.btn-activate-pair');
+    if (actBtn) {
+      actBtn.onclick = async () => {
+        actBtn.disabled = true;
+        try {
+          const r = await fetch(`/api/keys/${p.id}/activate`, { method: 'POST' });
+          if (r.ok) {
+            const resData = await r.json();
+            renderKeyPool(resData.pool);
+            fetchStatus();
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          actBtn.disabled = false;
+        }
+      };
+    }
+
+    const delBtn = card.querySelector('.btn-delete-pair');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        if (!confirm(`Удалить ключ «${p.label}» из пула?`)) return;
+        delBtn.disabled = true;
+        try {
+          const r = await fetch(`/api/keys/${p.id}`, { method: 'DELETE' });
+          if (r.ok) {
+            const resData = await r.json();
+            renderKeyPool(resData.pool);
+            fetchStatus();
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          delBtn.disabled = false;
+        }
+      };
+    }
+
+    keypoolCards.appendChild(card);
+  }
+}
+
+if (keypoolAutorotateCheck) {
+  keypoolAutorotateCheck.onchange = async () => {
+    try {
+      await fetch('/api/keys/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto_rotate: keypoolAutorotateCheck.checked }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+}
+
+if (keypoolAutopurgeCheck) {
+  keypoolAutopurgeCheck.onchange = async () => {
+    try {
+      await fetch('/api/keys/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto_purge_exhausted: keypoolAutopurgeCheck.checked }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+}
+
+if (btnCheckAllKeys) {
+  btnCheckAllKeys.onclick = async () => {
+    btnCheckAllKeys.disabled = true;
+    const prevText = btnCheckAllKeys.innerHTML;
+    btnCheckAllKeys.innerHTML = `${iconSvg('refresh', 13)} <span>Проверка...</span>`;
+    try {
+      const res = await fetch('/api/keys/check-all', { method: 'POST' });
+      if (res.ok) {
+        const d = await res.json();
+        renderKeyPool(d.pool);
+        fetchStatus();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      btnCheckAllKeys.innerHTML = prevText;
+      btnCheckAllKeys.disabled = false;
+    }
+  };
+}
+
+if (btnPurgeExhaustedKeys) {
+  btnPurgeExhaustedKeys.onclick = async () => {
+    btnPurgeExhaustedKeys.disabled = true;
+    try {
+      const res = await fetch('/api/keys/purge-exhausted', { method: 'POST' });
+      if (res.ok) {
+        const d = await res.json();
+        renderKeyPool(d.pool);
+        fetchStatus();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      btnPurgeExhaustedKeys.disabled = false;
+    }
+  };
+}
+
+if (btnAddKeypair) {
+  btnAddKeypair.onclick = async () => {
+    const apiKey = newKeyMain.value.trim();
+    const adminKey = newKeyAdmin.value.trim();
+    const label = newKeyLabel.value.trim();
+
+    if (!apiKey) {
+      showStatusBanner(keypoolAddStatus, 'Укажите основной API-ключ', false);
+      return;
+    }
+    if (!adminKey) {
+      showStatusBanner(keypoolAddStatus, 'Укажите Admin Key (для баланса и проверки)', false);
+      return;
+    }
+
+    btnAddKeypair.disabled = true;
+    showStatusBanner(keypoolAddStatus, 'Проверка ключей и баланса...', true);
+
+    try {
+      const res = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          admin_key: adminKey,
+          label: label || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Ошибка добавления пары ключей');
+      }
+
+      showStatusBanner(keypoolAddStatus, `Ключ «${data.pair.label}» успешно добавлен! Баланс: ${data.pair.formatted_balance}`, true);
+      newKeyMain.value = '';
+      newKeyAdmin.value = '';
+      newKeyLabel.value = '';
+      renderKeyPool(data.pool);
+      fetchStatus();
+    } catch (e) {
+      showStatusBanner(keypoolAddStatus, e.message || 'Ошибка сети при добавлении', false);
+    } finally {
+      btnAddKeypair.disabled = false;
+    }
+  };
+}
+
+async function openSettingsModal(defaultTab = 'api') {
   adminKeyMarkedForClear = false;
   geminiKeyMarkedForClear = false;
   settingsSaveStatus.classList.add('hidden');
   promptSaveStatus.classList.add('hidden');
+  if (keypoolAddStatus) keypoolAddStatus.classList.add('hidden');
   settingsApikeyInput.value = '';
   settingsAdminkeyInput.value = '';
   settingsGeminikeyInput.value = '';
+
+  for (const t of settingsTabs) t.classList.toggle('active', t.dataset.tab === defaultTab);
+  tabPanelApi.classList.toggle('hidden', defaultTab !== 'api');
+  tabPanelPrompt.classList.toggle('hidden', defaultTab !== 'prompt');
+  if (tabPanelKeys) tabPanelKeys.classList.toggle('hidden', defaultTab !== 'keys');
+
   settingsModal.showModal();
+
+  if (defaultTab === 'keys') {
+    loadKeyPool();
+  }
 
   try {
     const [cfgRes, promptRes] = await Promise.all([fetch('/api/config'), fetch('/api/system-prompt')]);
@@ -443,7 +731,10 @@ async function openSettingsModal() {
   }
 }
 
-btnHeaderSettings.onclick = openSettingsModal;
+btnHeaderSettings.onclick = () => openSettingsModal('api');
+if (pillBalance) {
+  pillBalance.onclick = () => openSettingsModal('keys');
+}
 
 settingsSaveBtn.onclick = async () => {
   const prov = settingsProviderSelect.value;
@@ -684,7 +975,28 @@ async function fetchStatus() {
     if (headerVersionBadge && data.port) {
       headerVersionBadge.textContent = `v${data.version || '2.0'} :${data.port}`;
     }
-    pillBalance.textContent = data.balance || '—';
+
+    if (pillBalanceText) {
+      pillBalanceText.textContent = data.balance || '—';
+    } else if (pillBalance) {
+      pillBalance.textContent = data.balance || '—';
+    }
+
+    if (data.keys_pool) {
+      if (poolCountBadge) {
+        poolCountBadge.textContent = `${data.keys_pool.ready || 1}/${data.keys_pool.total || 1}`;
+        poolCountBadge.title = `Всего ключей: ${data.keys_pool.total}, с балансом: ${data.keys_pool.ready}`;
+      }
+      if (keysTabBadge) {
+        keysTabBadge.textContent = String(data.keys_pool.total || 1);
+      }
+      if (poolDot) {
+        poolDot.className = 'pool-dot' + (data.keys_pool.ready === 0 ? ' danger' : (data.balance === '$0.0000' ? ' warning' : ''));
+      }
+      if (pillBalance && data.keys_pool.active_label) {
+        pillBalance.title = `Активен: ${data.keys_pool.active_label} (${data.balance || '—'}). В резерве: ${Math.max(0, (data.keys_pool.ready || 1) - 1)}. Нажмите для ротации и пула.`;
+      }
+    }
 
     if (distillEngineTag) {
       distillEngineTag.textContent = data.distill_label || 'Gemini · $0';
@@ -1346,8 +1658,14 @@ async function sendMessage(overrideText = null, approveExecution = false) {
           handleToolDone(data);
         } else if (data.type === 'context_update') {
           updateContextMeter(data.context_tokens, data.context_limit);
+        } else if (data.type === 'key_rotated') {
+          showNotificationToast(`Ротация API: переключено на «${data.label}» (${data.balance})`, 'ok');
+          fetchStatus();
         } else if (data.type === 'usage') {
-          if (data.balance) pillBalance.textContent = data.balance;
+          if (data.balance) {
+            if (pillBalanceText) pillBalanceText.textContent = data.balance;
+            else if (pillBalance) pillBalance.textContent = data.balance;
+          }
           if (data.context_tokens !== undefined) {
             updateContextMeter(data.context_tokens, data.context_limit);
           }

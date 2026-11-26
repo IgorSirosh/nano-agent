@@ -190,12 +190,41 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
             r_idx = await ac.get("/")
             self.assertEqual(r_idx.status_code, 200)
             self.assertIn("NanoAgent", r_idx.text)
-            self.assertIn("styles.css?v=2.1", r_idx.text)
+            self.assertIn("styles.css?v=2.2", r_idx.text)
 
             r_st = await ac.get("/api/status")
             self.assertEqual(r_st.status_code, 200)
             self.assertTrue(r_st.json()["has_key"])
             self.assertEqual(r_st.json()["distill_engine"], "gemini_free")
+            self.assertIn("keys_pool", r_st.json())
+
+            # Test Key Pool API endpoints
+            r_keys = await ac.get("/api/keys")
+            self.assertEqual(r_keys.status_code, 200)
+            self.assertIn("pairs", r_keys.json())
+
+            # Add second pair
+            r_add = await ac.post("/api/keys", json={
+                "api_key": "ak_dummy_pair2",
+                "admin_key": "sk_dummy_adm2",
+                "label": "Тестовый Аккаунт 2",
+            })
+            self.assertEqual(r_add.status_code, 200)
+            pair2_id = r_add.json()["pair"]["id"]
+
+            # Switch active pair
+            r_act = await ac.post(f"/api/keys/{pair2_id}/activate")
+            self.assertEqual(r_act.status_code, 200)
+            self.assertEqual(r_act.json()["pool"]["active_pair_id"], pair2_id)
+
+            # Update settings
+            r_set = await ac.patch("/api/keys/settings", json={"auto_rotate": True, "auto_purge_exhausted": True})
+            self.assertEqual(r_set.status_code, 200)
+            self.assertTrue(r_set.json()["pool"]["auto_rotate"])
+
+            # Delete pair
+            r_del_k = await ac.delete(f"/api/keys/{pair2_id}")
+            self.assertEqual(r_del_k.status_code, 200)
 
             r_new = await ac.post("/api/sessions/new", json={"title": "API Test", "mode": "plan"})
             self.assertEqual(r_new.status_code, 200)

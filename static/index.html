@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NanoAgent — Автономный AI-ассистент</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.1">
+  <link rel="stylesheet" href="/static/styles.css?v=2.2">
   <script src="/static/marked.min.js"></script>
 </head>
 <body>
@@ -54,7 +54,11 @@
           <span class="distill-engine-tag" id="distill-engine-tag">Gemini · $0</span>
         </button>
 
-        <div class="pill-balance tabular" id="pill-balance" title="Доступный баланс основного API">—</div>
+        <button type="button" class="pill-balance tabular" id="pill-balance" title="Баланс активного API и статус пула (нажмите для открытия пула)">
+          <span class="pool-dot" id="pool-dot"></span>
+          <span id="pill-balance-text">—</span>
+          <span class="pool-count-badge" id="pool-count-badge" title="Количество ключей в пуле">1</span>
+        </button>
 
         <div class="context-meter-box tabular" id="context-meter-box" title="Заполненность активного окна контекста">
           <span class="meter-label">Контекст</span>
@@ -196,6 +200,11 @@
         <span class="svg-slot" data-icon="key"></span>
         <span>API и память</span>
       </button>
+      <button type="button" class="settings-tab" data-tab="keys">
+        <span class="svg-slot" data-icon="refresh"></span>
+        <span>Пул и ротация</span>
+        <span class="tab-badge" id="keys-tab-badge">1</span>
+      </button>
       <button type="button" class="settings-tab" data-tab="prompt">
         <span class="svg-slot" data-icon="fileCode"></span>
         <span>Системный промпт</span>
@@ -259,6 +268,71 @@
         </div>
       </div>
 
+      <div id="tab-panel-keys" class="settings-form hidden">
+        <div class="keypool-controls">
+          <div class="keypool-switches">
+            <label class="switch-label">
+              <input type="checkbox" id="keypool-autorotate-check" checked>
+              <span>Авто-ротация при $0</span>
+            </label>
+            <label class="switch-label">
+              <input type="checkbox" id="keypool-autopurge-check" checked>
+              <span>Удалять нулевые ключи ($0.00)</span>
+            </label>
+          </div>
+          <div class="keypool-actions-row">
+            <button type="button" class="btn-cancel" id="btn-check-all-keys" title="Проверить баланс всех ключей через Admin Key">
+              <span class="svg-slot" data-icon="refresh"></span>
+              <span>Обновить балансы</span>
+            </button>
+            <button type="button" class="btn-cancel" id="btn-purge-exhausted-keys" title="Удалить все ключи с нулевым балансом">
+              <span class="svg-slot" data-icon="trash"></span>
+              <span>Очистить $0</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="keypool-list-header">
+          <span>Ключи в пуле (активный и резерв)</span>
+          <span id="keypool-counter-badge" class="badge">1 пара</span>
+        </div>
+
+        <div id="keypool-cards" class="keypool-cards-container">
+          <!-- Динамические карточки пар ключей -->
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="keypool-add-section">
+          <h3 class="keypool-add-title">
+            <span class="svg-slot" data-icon="plus"></span>
+            Добавить новую пару API
+          </h3>
+          <p class="field-hint">Добавляйте сколько угодно аккаунтов (по 2 ключа: основной API и Admin Key). При окончании баланса агент сразу подхватит следующий.</p>
+          <div class="keypool-add-grid">
+            <div class="settings-field">
+              <label for="new-key-main">Основной API-ключ (ak_... / sk-or-...)</label>
+              <input type="password" id="new-key-main" class="settings-input mono-input" placeholder="ak_... (для запросов и работы)">
+            </div>
+            <div class="settings-field">
+              <label for="new-key-admin">Admin Key (sk_... для баланса)</label>
+              <input type="password" id="new-key-admin" class="settings-input mono-input" placeholder="sk_... (для проверки баланса)">
+            </div>
+            <div class="settings-field">
+              <label for="new-key-label">Метка / Название (опционально)</label>
+              <input type="text" id="new-key-label" class="settings-input" placeholder="Например: Аккаунт 2">
+            </div>
+          </div>
+          <div id="keypool-add-status" class="status-banner hidden"></div>
+          <div class="dialog-actions">
+            <button type="button" class="btn-save-settings" id="btn-add-keypair">
+              <span class="svg-slot" data-icon="plus"></span>
+              <span>Добавить пару в пул</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="tab-panel-prompt" class="settings-form hidden">
         <div class="settings-field">
           <label for="system-prompt-editor">Базовые инструкции агента (system_prompt.txt)</label>
@@ -305,6 +379,6 @@
     </div>
   </dialog>
 
-  <script src="/static/app.js?v=2.1"></script>
+  <script src="/static/app.js?v=2.2"></script>
 </body>
 </html>

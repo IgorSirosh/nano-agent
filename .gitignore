@@ -1,6 +1,7 @@
 # Environment and secret keys
 .env
 .env.local
+keys.json
 
 # Sessions data and history
 data/sessions/

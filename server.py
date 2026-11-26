@@ -26,6 +26,7 @@ from core.config import (
     save_config,
 )
 from core.context import distill_session_async, session_distill_status
+from core.key_pool import key_pool
 from core.storage import (
     append_session_message,
     calculate_active_tokens,
@@ -58,6 +59,19 @@ class ConfigUpdateRequest(BaseModel):
     admin_key: Optional[str] = None
     distill_engine: Optional[str] = None
     gemini_api_key: Optional[str] = None
+
+
+class KeyPairAddRequest(BaseModel):
+    api_key: str
+    admin_key: str
+    label: Optional[str] = None
+    provider: Optional[str] = "abliteration"
+    base_url: Optional[str] = None
+
+
+class KeyPoolSettingsRequest(BaseModel):
+    auto_rotate: Optional[bool] = None
+    auto_purge_exhausted: Optional[bool] = None
 
 
 class SystemPromptUpdateRequest(BaseModel):
@@ -110,6 +124,7 @@ async def get_status():
     cfg = load_config()
     balance = await fetch_balance_async()
     models = get_models_catalog(cfg["provider"])
+    pool_status = await key_pool.get_status_payload()
     return {
         "status": "ok",
         "version": "2.0",
@@ -125,6 +140,13 @@ async def get_status():
         "balance": balance,
         "total_tokens": total_tokens_used_global,
         "models": models,
+        "keys_pool": {
+            "total": pool_status["total_pairs"],
+            "ready": pool_status["ready_pairs_count"],
+            "active_label": (pool_status.get("active_pair") or {}).get("label"),
+            "auto_rotate": pool_status["auto_rotate"],
+            "auto_purge_exhausted": pool_status["auto_purge_exhausted"],
+        },
     }
 
 
@@ -174,6 +196,93 @@ async def update_config_endpoint(req: ConfigUpdateRequest):
         "agy_available": updated["agy_available"],
         "has_gemini_key": updated["has_gemini_key"],
         "balance": balance,
+    }
+
+
+@app.get("/api/keys")
+async def get_keys_endpoint():
+    return await key_pool.get_status_payload()
+
+
+@app.post("/api/keys")
+async def add_key_endpoint(req: KeyPairAddRequest):
+    try:
+        pair = await key_pool.add_pair(
+            api_key=req.api_key,
+            admin_key=req.admin_key,
+            label=req.label,
+            provider=req.provider or "abliteration",
+            base_url=req.base_url,
+        )
+        return {
+            "status": "ok",
+            "message": f"Пара ключей «{pair.label}» успешно добавлена",
+            "pair": pair.to_dict(include_secrets=False),
+            "pool": await key_pool.get_status_payload(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка добавления ключа: {e}")
+
+
+@app.delete("/api/keys/{pair_id}")
+async def delete_key_endpoint(pair_id: str):
+    removed = await key_pool.remove_pair(pair_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Пара ключей не найдена")
+    return {
+        "status": "ok",
+        "message": "Ключ удалён из пула",
+        "pool": await key_pool.get_status_payload(),
+    }
+
+
+@app.post("/api/keys/{pair_id}/activate")
+async def activate_key_endpoint(pair_id: str):
+    try:
+        pair = await key_pool.set_active_pair(pair_id)
+        return {
+            "status": "ok",
+            "message": f"Активным выбран ключ «{pair.label}»",
+            "pair": pair.to_dict(include_secrets=False),
+            "pool": await key_pool.get_status_payload(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/api/keys/check-all")
+async def check_all_keys_endpoint():
+    payload = await key_pool.check_all_balances()
+    return {
+        "status": "ok",
+        "message": "Балансы всех ключей обновлены",
+        "pool": payload,
+    }
+
+
+@app.post("/api/keys/purge-exhausted")
+async def purge_exhausted_keys_endpoint():
+    count = await key_pool.purge_exhausted_pairs()
+    return {
+        "status": "ok",
+        "message": f"Удалено пустых ключей: {count}",
+        "purged_count": count,
+        "pool": await key_pool.get_status_payload(),
+    }
+
+
+@app.patch("/api/keys/settings")
+async def update_key_settings_endpoint(req: KeyPoolSettingsRequest):
+    payload = await key_pool.update_settings(
+        auto_rotate=req.auto_rotate,
+        auto_purge_exhausted=req.auto_purge_exhausted,
+    )
+    return {
+        "status": "ok",
+        "message": "Настройки ротации обновлены",
+        "pool": payload,
     }
 
 
@@ -335,5 +444,5 @@ if __name__ == "__main__":
 
     cfg = load_config()
     port = cfg["port"]
-    print(f"🚀 Запуск NanoAgent v2.0 (Context Distiller) на http://localhost:{port}")
+    print(f"[*] Запуск NanoAgent v2.0 (Context Distiller) на http://localhost:{port}")
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)

@@ -8,6 +8,7 @@ from core.context import (
     distill_session_async,
     session_distill_status,
 )
+from core.key_pool import is_quota_or_balance_error, key_pool
 from core.storage import (
     append_session_message,
     calculate_active_tokens,
@@ -192,6 +193,23 @@ async def chat_stream_generator(
                                 if tc.function.arguments:
                                     tools_map[idx]["arguments"] += tc.function.arguments
             except Exception as e:
+                if is_quota_or_balance_error(e) and key_pool.auto_rotate:
+                    yield _sse({"type": "status", "text": "Баланс активного API-ключа исчерпан ($0.00). Выполняется ротация ключа..."})
+                    new_pair = await key_pool.rotate_to_next_active(reason=str(e))
+                    if new_pair:
+                        yield _sse({
+                            "type": "key_rotated",
+                            "new_key_id": new_pair.id,
+                            "label": new_pair.label,
+                            "balance": new_pair.formatted_balance,
+                        })
+                        yield _sse({"type": "status", "text": f"Переключено на {new_pair.label} ({new_pair.formatted_balance}). Повтор запроса..."})
+                        cli = get_async_openai_client()
+                        continue
+                    else:
+                        hit_error = True
+                        yield _sse({"type": "error", "error": "Все доступные API-ключи исчерпаны ($0.00). Добавьте новый рабочий ключ в настройках."})
+                        break
                 hit_error = True
                 yield _sse({"type": "error", "error": str(e)})
                 break
