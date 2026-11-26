@@ -1,5 +1,55 @@
-/* NanoAgent v2.0 Frontend */
+/* NanoAgent v2.0 Frontend (Linear/Cursor Design + Free Gemini Distiller) */
 
+const SVG_ICONS = {
+  sidebar: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  sparkles: '<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>',
+  sliders: '<line x1="4" x2="20" y1="21" y2="21"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="3" y2="3"/><circle cx="14" cy="12" r="2"/><circle cx="8" cy="3" r="2"/><circle cx="16" cy="21" r="2"/>',
+  edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  send: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  stop: '<rect width="12" height="12" x="6" y="6" rx="2"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  cpu: '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+  layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  brain: '<path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>',
+  terminal: '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
+  fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  fileEdit: '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>',
+  folderTree: '<path d="M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"/><path d="M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"/><path d="M3 5a2 2 0 0 0 2 2h3"/><path d="M3 3v13a2 2 0 0 0 2 2h3"/>',
+  fileSearch: '<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.268 21a2 2 0 0 0 1.727 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><circle cx="5" cy="14" r="3"/><path d="m9 18-1.5-1.5"/>',
+  shieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  fileCode: '<path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>',
+  alertCircle: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+};
+
+function iconSvg(name, size = 15) {
+  const path = SVG_ICONS[name] || SVG_ICONS.zap;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+}
+
+function hydrateSvgSlots(root = document) {
+  for (const el of root.querySelectorAll('.svg-slot[data-icon]')) {
+    const iconName = el.dataset.icon;
+    const size = parseInt(el.dataset.size || '15', 10);
+    el.innerHTML = iconSvg(iconName, size);
+  }
+}
+
+hydrateSvgSlots(document);
+
+// State
 let currentSessionId = null;
 let loadedSessionId = null;
 let currentMode = 'plan';
@@ -10,9 +60,10 @@ let allSessionsCache = [];
 let loadedModels = [];
 let activeModelId = localStorage.getItem('nanoagent_selected_model') || 'abliterated-model-large-flash';
 let lastHandledDistillFinish = 0;
+let distillPollTimer = null;
 let initialConfigPromptChecked = false;
-let hasAdminKeyConfigured = false;
 let adminKeyMarkedForClear = false;
+let geminiKeyMarkedForClear = false;
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -28,6 +79,7 @@ const pillBalance = document.getElementById('pill-balance');
 const meterBarInner = document.getElementById('meter-bar-inner');
 const meterText = document.getElementById('meter-text');
 const btnDistillNow = document.getElementById('btn-distill-now');
+const distillEngineTag = document.getElementById('distill-engine-tag');
 
 const activeMemoryStrip = document.getElementById('active-memory-strip');
 const btnToggleMemoryPreview = document.getElementById('btn-toggle-memory-preview');
@@ -72,6 +124,11 @@ const settingsApikeyInput = document.getElementById('settings-apikey-input');
 const settingsAdminGroup = document.getElementById('settings-admin-group');
 const settingsAdminkeyInput = document.getElementById('settings-adminkey-input');
 const btnClearAdminKey = document.getElementById('btn-clear-adminkey');
+const settingsDistillSelect = document.getElementById('settings-distill-select');
+const distillAgyHint = document.getElementById('distill-agy-hint');
+const settingsGeminiGroup = document.getElementById('settings-gemini-group');
+const settingsGeminikeyInput = document.getElementById('settings-geminikey-input');
+const btnClearGeminiKey = document.getElementById('btn-clear-geminikey');
 const settingsSaveBtn = document.getElementById('settings-save-btn');
 const settingsSaveStatus = document.getElementById('settings-save-status');
 
@@ -87,7 +144,7 @@ const titleModalInput = document.getElementById('title-modal-input');
 const cwdSaveBtn = document.getElementById('cwd-save-btn');
 const cwdSaveStatus = document.getElementById('cwd-save-status');
 
-// Restore persisted settings
+// Restore persisted limit
 const savedLimit = localStorage.getItem('nanoagent_context_limit');
 if (savedLimit && Array.from(contextLimitSelect.options).some(o => o.value === savedLimit)) {
   contextLimitSelect.value = savedLimit;
@@ -195,9 +252,7 @@ function setSafeMarkdown(targetEl, markdownText) {
     targetEl.replaceChildren(frag);
   }
 
-  // Wrap <pre> blocks with Copy buttons
-  const pres = targetEl.querySelectorAll('pre');
-  for (const pre of pres) {
+  for (const pre of targetEl.querySelectorAll('pre')) {
     if (pre.parentElement && pre.parentElement.classList.contains('code-block-wrap')) continue;
     const wrap = document.createElement('div');
     wrap.className = 'code-block-wrap';
@@ -207,14 +262,14 @@ function setSafeMarkdown(targetEl, markdownText) {
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.className = 'btn-copy-code';
-    copyBtn.textContent = '📋 Копировать';
+    copyBtn.innerHTML = `${iconSvg('copy', 12)} <span>Копировать</span>`;
     copyBtn.onclick = async () => {
       const codeEl = pre.querySelector('code');
       const text = (codeEl ? codeEl.innerText : pre.innerText) || '';
       try {
         await navigator.clipboard.writeText(text);
-        copyBtn.textContent = '✓ Скопировано';
-        setTimeout(() => { copyBtn.textContent = '📋 Копировать'; }, 1500);
+        copyBtn.innerHTML = `${iconSvg('check', 12)} <span>Скопировано</span>`;
+        setTimeout(() => { copyBtn.innerHTML = `${iconSvg('copy', 12)} <span>Копировать</span>`; }, 1500);
       } catch (_) {
         copyBtn.textContent = 'Ошибка';
       }
@@ -233,9 +288,9 @@ function updateContextMeter(tokens, limit) {
   meterBarInner.style.width = `${pct}%`;
   meterText.textContent = `${pct}% (${tokens}/${Math.round(safeLimit / 1000)}k)`;
   if (pct > 80) {
-    meterBarInner.style.background = 'var(--danger)';
+    meterBarInner.style.background = 'var(--crimson)';
   } else if (pct > 50) {
-    meterBarInner.style.background = 'var(--warning)';
+    meterBarInner.style.background = 'var(--amber)';
   } else {
     meterBarInner.style.background = 'var(--accent)';
   }
@@ -281,24 +336,19 @@ btnToggleMemoryPreview.onclick = () => {
   memoryStripBody.classList.toggle('hidden');
 };
 
-function showNotificationToast(msg) {
+function showNotificationToast(msg, kind = 'ok') {
   const t = document.createElement('div');
-  t.className = 'status-pill';
-  t.style.position = 'fixed';
-  t.style.bottom = '90px';
-  t.style.right = '22px';
-  t.style.zIndex = '9999';
-  t.style.background = '#2e1065';
-  t.style.borderColor = '#a855f7';
-  t.innerHTML = `<span>✨</span> <span>${escapeHtml(msg)}</span>`;
+  t.className = `toast-pill ${kind}`;
+  const ic = kind === 'err' ? 'alertCircle' : 'shieldCheck';
+  t.innerHTML = `<span class="svg-slot">${iconSvg(ic, 14)}</span> <span>${escapeHtml(msg)}</span>`;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4200);
+  setTimeout(() => t.remove(), 4500);
 }
 
-// --- Settings Dialog Logic ---
+// --- Settings Dialog ---
 function showBanner(el, ok, text) {
   el.classList.remove('hidden');
-  el.style.color = ok ? '#4ade80' : '#f87171';
+  el.style.color = ok ? '#34d399' : '#f87171';
   el.textContent = text;
 }
 
@@ -328,6 +378,10 @@ settingsProviderSelect.onchange = () => {
   }
 };
 
+settingsDistillSelect.onchange = () => {
+  settingsGeminiGroup.classList.toggle('hidden', settingsDistillSelect.value !== 'gemini_free');
+};
+
 btnClearAdminKey.onclick = () => {
   adminKeyMarkedForClear = true;
   settingsAdminkeyInput.value = '';
@@ -335,12 +389,21 @@ btnClearAdminKey.onclick = () => {
   btnClearAdminKey.classList.add('hidden');
 };
 
+btnClearGeminiKey.onclick = () => {
+  geminiKeyMarkedForClear = true;
+  settingsGeminikeyInput.value = '';
+  settingsGeminikeyInput.placeholder = 'Gemini API Key будет удалён при сохранении';
+  btnClearGeminiKey.classList.add('hidden');
+};
+
 async function openSettingsModal() {
   adminKeyMarkedForClear = false;
+  geminiKeyMarkedForClear = false;
   settingsSaveStatus.classList.add('hidden');
   promptSaveStatus.classList.add('hidden');
   settingsApikeyInput.value = '';
   settingsAdminkeyInput.value = '';
+  settingsGeminikeyInput.value = '';
   settingsModal.showModal();
 
   try {
@@ -352,12 +415,24 @@ async function openSettingsModal() {
       settingsApikeyInput.placeholder = data.masked_key
         ? `Текущий: ${data.masked_key} (оставьте пустым чтобы не менять)`
         : 'Введите ваш API-ключ...';
-      hasAdminKeyConfigured = !!data.has_admin_key;
-      settingsAdminkeyInput.placeholder = hasAdminKeyConfigured
+      settingsAdminkeyInput.placeholder = data.has_admin_key
         ? 'Настроен (введите новый для замены)'
         : 'sk_... (необязательно)';
-      btnClearAdminKey.classList.toggle('hidden', !hasAdminKeyConfigured);
+      btnClearAdminKey.classList.toggle('hidden', !data.has_admin_key);
+
+      settingsDistillSelect.value = data.distill_engine || 'gemini_free';
+      distillAgyHint.textContent = data.agy_available
+        ? 'Локальный Google Antigravity CLI (agy) обнаружен — сжатие работает бесплатно ($0).'
+        : 'agy не найден: для бесплатного сжатия укажите Gemini API Key ниже.';
+      distillAgyHint.style.color = data.agy_available ? '#34d399' : '#f59e0b';
+
+      settingsGeminikeyInput.placeholder = data.has_gemini_key
+        ? 'Настроен (введите новый для замены)'
+        : 'AIza... (необязательно при наличии agy)';
+      btnClearGeminiKey.classList.toggle('hidden', !data.has_gemini_key);
+
       settingsProviderSelect.onchange();
+      settingsDistillSelect.onchange();
     }
     if (promptRes.ok) {
       const pdata = await promptRes.json();
@@ -376,6 +451,8 @@ settingsSaveBtn.onclick = async () => {
   const bUrl = settingsBaseurlInput.value.trim();
   const admRaw = settingsAdminkeyInput.value.trim();
   const admPayload = adminKeyMarkedForClear && !admRaw ? '__CLEAR__' : (admRaw || undefined);
+  const gemRaw = settingsGeminikeyInput.value.trim();
+  const gemPayload = geminiKeyMarkedForClear && !gemRaw ? '__CLEAR__' : (gemRaw || undefined);
 
   settingsSaveBtn.disabled = true;
   settingsSaveBtn.textContent = 'Сохранение...';
@@ -388,13 +465,15 @@ settingsSaveBtn.onclick = async () => {
         api_key: key,
         base_url: bUrl || undefined,
         admin_key: admPayload,
+        distill_engine: settingsDistillSelect.value,
+        gemini_api_key: gemPayload,
       }),
     });
     const data = await res.json();
     if (res.ok) {
-      showBanner(settingsSaveStatus, true, '✓ Настройки сохранены');
+      showBanner(settingsSaveStatus, true, 'Настройки сохранены');
       await fetchStatus();
-      setTimeout(() => settingsModal.close(), 650);
+      setTimeout(() => settingsModal.close(), 550);
     } else {
       showBanner(settingsSaveStatus, false, `Ошибка: ${data.detail || 'Не удалось сохранить'}`);
     }
@@ -402,7 +481,7 @@ settingsSaveBtn.onclick = async () => {
     showBanner(settingsSaveStatus, false, `Ошибка сети: ${e.message}`);
   } finally {
     settingsSaveBtn.disabled = false;
-    settingsSaveBtn.textContent = '💾 Сохранить API';
+    settingsSaveBtn.textContent = 'Сохранить настройки';
   }
 };
 
@@ -415,7 +494,7 @@ promptSaveBtn.onclick = async () => {
     });
     const data = await res.json();
     if (res.ok) {
-      showBanner(promptSaveStatus, true, '✓ Системный промпт обновлён');
+      showBanner(promptSaveStatus, true, 'Системный промпт обновлён');
     } else {
       showBanner(promptSaveStatus, false, `Ошибка: ${data.detail || 'Не удалось сохранить'}`);
     }
@@ -430,7 +509,7 @@ promptResetBtn.onclick = async () => {
     const data = await res.json();
     if (res.ok) {
       systemPromptEditor.value = data.content || '';
-      showBanner(promptSaveStatus, true, '↺ Восстановлен стандартный системный промпт');
+      showBanner(promptSaveStatus, true, 'Восстановлен стандартный системный промпт');
     }
   } catch (e) {
     showBanner(promptSaveStatus, false, `Ошибка сети: ${e.message}`);
@@ -493,6 +572,10 @@ customModelInput.onkeydown = (e) => {
   if (e.key === 'Enter') customModelApplyBtn.click();
 };
 
+function resolveModelIconName(rawIcon) {
+  return SVG_ICONS[rawIcon] ? rawIcon : 'zap';
+}
+
 function setActiveModel(modelId, save = true) {
   if (!modelId) return;
   activeModelId = modelId;
@@ -504,8 +587,8 @@ function setActiveModel(modelId, save = true) {
       id: modelId,
       name: modelId,
       short_name: modelId.split('/').pop(),
-      icon: '⚡',
-      badge: 'Своя модель',
+      icon: 'code',
+      badge: 'Своя',
       context: 'Пользовательская',
       desc: 'Собственный ID модели',
     };
@@ -523,7 +606,7 @@ function setActiveModel(modelId, save = true) {
   }
   modelSelect.value = modelId;
 
-  mHeaderIcon.textContent = model.icon || '⚡';
+  mHeaderIcon.innerHTML = iconSvg(resolveModelIconName(model.icon), 14);
   mHeaderName.textContent = model.short_name || model.name || model.id;
   mHeaderBadge.textContent = model.context ? model.context.split(' ')[0] : '1M';
 
@@ -536,7 +619,7 @@ function setActiveModel(modelId, save = true) {
     const statusBox = card.querySelector('.model-card-status');
     if (statusBox) {
       statusBox.innerHTML = isAct
-        ? '<span class="status-active-badge">✓ Активна</span>'
+        ? `<span class="status-active-badge">${iconSvg('check', 13)} Активна</span>`
         : '<button type="button" class="btn-select-model">Выбрать</button>';
     }
   }
@@ -552,7 +635,8 @@ function renderPills() {
     btn.onclick = () => setActiveModel(m.id, true);
     const short = escapeHtml(m.short_name || m.name || m.id);
     const tag = m.context ? escapeHtml(m.context.split(' ')[0]) : '';
-    btn.innerHTML = `<span>${m.icon || '⚡'}</span><span>${short}</span>${tag ? `<span class="pill-tag">${tag}</span>` : ''}`;
+    const ic = iconSvg(resolveModelIconName(m.icon), 13);
+    btn.innerHTML = `<span class="model-dot"></span>${ic}<span>${short}</span>${tag ? `<span class="pill-tag tabular">${tag}</span>` : ''}`;
     modelPillsList.appendChild(btn);
   }
 }
@@ -568,21 +652,22 @@ function renderCards() {
       setActiveModel(m.id, true);
       modelModal.close();
     };
+    const ic = iconSvg(resolveModelIconName(m.icon), 17);
     card.innerHTML = `
       <div class="model-card-left">
-        <div class="model-card-icon">${m.icon || '⚡'}</div>
+        <div class="model-card-icon">${ic}</div>
         <div>
           <div class="model-card-title-row">
             <span class="model-card-name">${escapeHtml(m.name || m.id)}</span>
             ${m.badge ? `<span class="model-card-badge">${escapeHtml(m.badge)}</span>` : ''}
-            ${m.context ? `<span class="model-card-context">${escapeHtml(m.context)}</span>` : ''}
+            ${m.context ? `<span class="model-card-context tabular">${escapeHtml(m.context)}</span>` : ''}
           </div>
           <div class="model-card-desc">${escapeHtml(m.desc || '')}</div>
           <div class="model-card-id">${escapeHtml(m.id)}</div>
         </div>
       </div>
       <div class="model-card-status">
-        ${isAct ? '<span class="status-active-badge">✓ Активна</span>' : '<button type="button" class="btn-select-model">Выбрать</button>'}
+        ${isAct ? `<span class="status-active-badge">${iconSvg('check', 13)} Активна</span>` : '<button type="button" class="btn-select-model">Выбрать</button>'}
       </div>
     `;
     modelCardsGrid.appendChild(card);
@@ -601,11 +686,16 @@ async function fetchStatus() {
     }
     pillBalance.textContent = data.balance || '—';
 
+    if (distillEngineTag) {
+      distillEngineTag.textContent = data.distill_label || 'Gemini · $0';
+      btnDistillNow.classList.toggle('paid-mode', data.distill_engine === 'main_api');
+    }
+
     if (data.provider) {
       const names = {
-        abliteration: 'Abliteration AI (Без цензуры)',
+        abliteration: 'Abliteration AI',
         openrouter: 'OpenRouter API',
-        custom: 'Свой OpenAI-совместимый API',
+        custom: 'OpenAI-совместимый API',
       };
       modalProviderBadge.textContent = names[data.provider] || data.provider;
     }
@@ -656,8 +746,8 @@ function renderSessionsList() {
     titleEl.className = 'session-title';
     titleEl.textContent = s.title || `Диалог ${s.id}`;
     const subEl = document.createElement('span');
-    subEl.className = 'session-sub';
-    subEl.textContent = `${s.messages_count || 0} сообщ. • ${s.tokens || 0} tok`;
+    subEl.className = 'session-sub tabular';
+    subEl.textContent = `${s.messages_count || 0} сообщ. · ${s.tokens || 0} tok`;
     meta.appendChild(titleEl);
     meta.appendChild(subEl);
 
@@ -668,7 +758,7 @@ function renderSessionsList() {
     editBtn.type = 'button';
     editBtn.className = 'btn-session-act';
     editBtn.title = 'Переименовать / папка';
-    editBtn.textContent = '✏️';
+    editBtn.innerHTML = iconSvg('edit', 13);
     editBtn.onclick = (e) => {
       e.stopPropagation();
       if (s.id !== currentSessionId) selectSession(s.id).then(() => openCwdRenameModal(true));
@@ -679,7 +769,7 @@ function renderSessionsList() {
     delBtn.type = 'button';
     delBtn.className = 'btn-session-act del';
     delBtn.title = 'Удалить';
-    delBtn.textContent = '✕';
+    delBtn.innerHTML = iconSvg('trash', 13);
     delBtn.onclick = (e) => {
       e.stopPropagation();
       deleteSession(s.id);
@@ -712,9 +802,10 @@ async function loadSessions() {
 
 async function selectSession(id) {
   if (isGenerating && currentSessionId !== id) {
-    showNotificationToast('Сначала дождитесь завершения или остановите текущий запрос');
+    showNotificationToast('Дождитесь завершения или остановите текущий запрос', 'err');
     return;
   }
+  stopDistillPolling();
   currentSessionId = id;
   renderSessionsList();
   await loadSessionMessages(id);
@@ -753,6 +844,14 @@ function getToolCategory(toolName) {
   return 'bash';
 }
 
+function getToolIconName(toolName) {
+  if (toolName === 'read_file') return 'fileText';
+  if (toolName === 'list_dir') return 'folderTree';
+  if (toolName === 'search_files') return 'fileSearch';
+  if (toolName === 'write_file' || toolName === 'edit_file') return 'fileEdit';
+  return 'terminal';
+}
+
 function buildToolCardElement(toolName, cmdPreview, output, diffText, exitCode, isArchived = false) {
   const row = document.createElement('div');
   row.className = 'msg-row' + (isArchived ? ' archived' : '');
@@ -762,17 +861,18 @@ function buildToolCardElement(toolName, cmdPreview, output, diffText, exitCode, 
 
   const errClass = exitCode && exitCode !== 0 ? ' err' : '';
   const statusLabel = exitCode !== undefined && exitCode !== null
-    ? (exitCode === 0 ? '✓ OK' : `exit ${exitCode}`)
+    ? (exitCode === 0 ? 'OK' : `exit ${exitCode}`)
     : 'выполнено';
 
   const header = document.createElement('div');
   header.className = 'tool-header';
   header.innerHTML = `
     <div class="tool-header-left">
+      <span class="svg-slot tool-icon">${iconSvg(getToolIconName(toolName), 13)}</span>
       <span class="tool-tag ${cat}">${escapeHtml(toolName)}</span>
       <span class="tool-cmd-preview">${escapeHtml((cmdPreview || '').slice(0, 90))}</span>
     </div>
-    <span class="tool-timer${errClass}">${escapeHtml(statusLabel)}</span>
+    <span class="tool-timer tabular${errClass}">${escapeHtml(statusLabel)}</span>
   `;
   header.onclick = () => {
     if (cat === 'readonly') card.classList.toggle('expanded');
@@ -805,12 +905,16 @@ function appendDistillEventCard(ev) {
   const card = document.createElement('div');
   card.className = 'distiller-card';
   const statsBadge = ev.tokens_before !== undefined
-    ? `${ev.tokens_before} ➔ ${ev.tokens_after} tok (−${ev.saved_percent}%)`
-    : 'Дистиллировано';
+    ? `${ev.tokens_before} -> ${ev.tokens_after} tok (-${ev.saved_percent}%)`
+    : 'Консолидировано';
+  const engineLabel = ev.engine_label || 'Active Memory';
   card.innerHTML = `
     <div class="distiller-header">
-      <div class="distiller-title"><span>🧠</span> <span>AI Context Distiller: Рабочая память обновлена</span></div>
-      <span class="distiller-badge">${escapeHtml(statsBadge)}</span>
+      <div class="distiller-title">${iconSvg('sparkles', 14)} <span>Active Memory обновлена</span></div>
+      <div class="distiller-badges">
+        <span class="distiller-engine-pill">${escapeHtml(engineLabel)}</span>
+        <span class="distiller-badge tabular">${escapeHtml(statsBadge)}</span>
+      </div>
     </div>
     <div class="distiller-body"></div>
   `;
@@ -844,15 +948,18 @@ function appendReasoningBox(text, collapsed = true) {
   box.className = 'thinking-box';
   box.innerHTML = `
     <div class="thinking-summary">
-      <span>💭 Рассуждения модели</span>
-      <span style="font-size: 0.74rem">свернуть / развернуть</span>
+      <span class="thinking-label">${iconSvg('brain', 14)} <span>Ход рассуждений</span></span>
+      <span class="svg-slot">${iconSvg(collapsed ? 'chevronRight' : 'chevronDown', 14)}</span>
     </div>
     <div class="thinking-content"${collapsed ? ' style="display:none;"' : ''}></div>
   `;
   const contentEl = box.querySelector('.thinking-content');
+  const chevEl = box.querySelector('.thinking-summary .svg-slot');
   contentEl.textContent = text;
   box.querySelector('.thinking-summary').onclick = () => {
-    contentEl.style.display = contentEl.style.display === 'none' ? 'block' : 'none';
+    const isHidden = contentEl.style.display === 'none';
+    contentEl.style.display = isHidden ? 'block' : 'none';
+    chevEl.innerHTML = iconSvg(isHidden ? 'chevronDown' : 'chevronRight', 14);
   };
   row.appendChild(box);
   chatContainer.appendChild(row);
@@ -868,8 +975,8 @@ function appendPlanActionBar() {
   const bar = document.createElement('div');
   bar.className = 'plan-execute-bar';
   bar.innerHTML = `
-    <span class="plan-execute-hint">🧭 План готов. Подтвердите выполнение, чтобы разблокировать запись файлов и терминал.</span>
-    <button type="button" class="btn-execute-plan">▶️ Выполнить план</button>
+    <span class="plan-execute-hint">${iconSvg('compass', 15)} <span>План готов. Подтвердите выполнение для доступа к инструментам изменения.</span></span>
+    <button type="button" class="btn-execute-plan">${iconSvg('play', 13)} <span>Выполнить план</span></button>
   `;
   bar.querySelector('.btn-execute-plan').onclick = () => {
     row.remove();
@@ -896,7 +1003,7 @@ async function loadSessionMessages(id) {
     const msgs = data.messages || [];
     if (msgs.length === 0) {
       appendMessage(
-        'Привет! Это **NanoAgent v2.0** с асинхронным движком, 6 встроенными инструментами (`read_file`, `write_file`, `edit_file`, `list_dir`, `search_files`, `bash`) и потокобезопасным сжатием контекста.\n\nВыберите режим **🧭 План** или **⚡ Авто** внизу и опишите задачу.',
+        'Рабочая среда **NanoAgent v2.0** готова.\n\nВыберите режим **План** (только чтение и проектирование) или **Авто** (полное выполнение), выберите модель и опишите задачу.',
         'assistant'
       );
       return;
@@ -906,9 +1013,9 @@ async function loadSessionMessages(id) {
       const archived = Boolean(m.compressed);
       if (m.role === 'system_event' && m.event === 'distilled') {
         appendDistillEventCard(m);
-      } else if (m.is_distilled_memory || (m.role === 'user' && m.content && m.content.startsWith('[🧠 ДИСТИЛЛИРОВАННАЯ'))) {
-        const clean = (m.content || '').replace('[🧠 ДИСТИЛЛИРОВАННАЯ РАБОЧАЯ ПАМЯТЬ АГЕНТА]', '').trim();
-        appendDistillEventCard({ summary: clean });
+      } else if (m.is_distilled_memory || (m.role === 'user' && m.content && m.content.includes('ДИСТИЛЛИРОВАННАЯ'))) {
+        const clean = (m.content || '').replace(/\[.*?ДИСТИЛЛИРОВАННАЯ[^\]]*\]/, '').trim();
+        appendDistillEventCard({ summary: clean, engine_label: 'Legacy' });
       } else if (m.is_distilled_ack) {
         continue;
       } else if (m.role === 'user') {
@@ -934,9 +1041,73 @@ async function loadSessionMessages(id) {
   }
 }
 
-// --- Background Distiller Polling ---
+// --- Smart On-Demand Distill Polling (Zero Idle Spam) ---
+function setDistillButtonBusy(busy) {
+  btnDistillNow.disabled = busy;
+  const labelSpan = btnDistillNow.querySelector('span:nth-child(2)');
+  if (labelSpan) labelSpan.textContent = busy ? 'Сжимаю...' : 'Сжать память';
+}
+
+function stopDistillPolling() {
+  if (distillPollTimer) {
+    clearInterval(distillPollTimer);
+    distillPollTimer = null;
+  }
+  setDistillButtonBusy(false);
+}
+
+function startDistillPolling(sessionId) {
+  stopDistillPolling();
+  setDistillButtonBusy(true);
+  let polls = 0;
+
+  const checkOnce = async () => {
+    polls += 1;
+    if (polls > 45 || sessionId !== currentSessionId) {
+      stopDistillPolling();
+      return;
+    }
+    try {
+      const res = await fetch(`/api/distill/status/${sessionId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.status === 'running') {
+        setDistillButtonBusy(true);
+        return;
+      }
+
+      stopDistillPolling();
+
+      if (data.status === 'done' && data.finished_at && data.finished_at > lastHandledDistillFinish) {
+        lastHandledDistillFinish = data.finished_at;
+        showNotificationToast(
+          `Память сжата (${data.engine_label || 'Gemini · $0'}): ${data.tokens_before} -> ${data.tokens_after} tok (-${data.saved_percent}%)`,
+          'ok'
+        );
+        updateContextMeter(data.tokens_after, getContextLimit());
+        updateActiveMemoryStrip(data.summary || '');
+        if (!isGenerating && loadedSessionId === currentSessionId) {
+          await loadSessionMessages(currentSessionId);
+          await loadSessions();
+        }
+      } else if (data.status === 'skipped') {
+        showNotificationToast(data.message || 'Сжимать пока нечего', 'ok');
+      } else if (data.status === 'error') {
+        showNotificationToast(data.error || 'Ошибка дистилляции', 'err');
+      }
+    } catch (_) {
+      stopDistillPolling();
+    }
+  };
+
+  distillPollTimer = setInterval(checkOnce, 1500);
+  checkOnce();
+}
+
 btnDistillNow.onclick = async () => {
   if (!currentSessionId) return;
+  setDistillButtonBusy(true);
   try {
     const res = await fetch('/api/distill', {
       method: 'POST',
@@ -944,40 +1115,13 @@ btnDistillNow.onclick = async () => {
       body: JSON.stringify({ session_id: currentSessionId, model: modelSelect.value }),
     });
     const data = await res.json();
-    showNotificationToast(data.message || 'Фоновое сжатие запущено');
-    checkBackgroundDistillStatus();
+    showNotificationToast(data.message || 'Сжатие памяти запущено', 'ok');
+    startDistillPolling(currentSessionId);
   } catch (e) {
-    console.error('Ошибка запуска дистилляции:', e);
+    setDistillButtonBusy(false);
+    showNotificationToast(`Ошибка запуска сжатия: ${e.message}`, 'err');
   }
 };
-
-async function checkBackgroundDistillStatus() {
-  if (!currentSessionId) return;
-  try {
-    const res = await fetch(`/api/distill/status/${currentSessionId}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.status === 'running') {
-      btnDistillNow.disabled = true;
-      btnDistillNow.innerHTML = `<div class="spinner"></div> <span>Сжимаю...</span>`;
-    } else {
-      btnDistillNow.disabled = false;
-      btnDistillNow.innerHTML = `<span>⚡</span> <span>Сжать память</span>`;
-      if (data.status === 'done' && data.finished_at && data.finished_at > lastHandledDistillFinish) {
-        lastHandledDistillFinish = data.finished_at;
-        showNotificationToast(`Память сжата: ${data.tokens_before} ➔ ${data.tokens_after} tok (−${data.saved_percent}%)`);
-        updateContextMeter(data.tokens_after, getContextLimit());
-        updateActiveMemoryStrip(data.summary || '');
-        if (!isGenerating && loadedSessionId === currentSessionId) {
-          await loadSessionMessages(currentSessionId);
-          await loadSessions();
-        }
-      }
-    }
-  } catch (_) {}
-}
-
-setInterval(checkBackgroundDistillStatus, 3000);
 
 // --- Live Streaming & Stop ---
 let activeThinkingBox = null;
@@ -1056,6 +1200,7 @@ function handleToolStart(toolName, cmdPreview) {
 
   toolStartTime = Date.now();
   const timerEl = activeToolRow.querySelector('.tool-timer');
+  timerEl.classList.add('running');
   toolTimerInterval = setInterval(() => {
     if (timerEl) timerEl.textContent = `${((Date.now() - toolStartTime) / 1000).toFixed(1)}s`;
   }, 100);
@@ -1071,7 +1216,8 @@ function handleToolDone(data) {
   const timerEl = card.querySelector('.tool-timer');
   const ec = data.exit_code;
   if (timerEl) {
-    timerEl.textContent = ec && ec !== 0 ? `${dur}s (exit ${ec})` : `${dur}s ✓`;
+    timerEl.classList.remove('running');
+    timerEl.textContent = ec && ec !== 0 ? `${dur}s (exit ${ec})` : `${dur}s OK`;
     if (ec && ec !== 0) timerEl.classList.add('err');
   }
 
@@ -1155,7 +1301,7 @@ async function sendMessage(overrideText = null, approveExecution = false) {
         detail = errJson.detail || detail;
       } catch (_) {}
       removeStatus();
-      appendMessage(`❌ Ошибка: ${detail}`, 'assistant');
+      appendMessage(`Ошибка: ${detail}`, 'assistant');
       return;
     }
 
@@ -1183,6 +1329,8 @@ async function sendMessage(overrideText = null, approveExecution = false) {
           if (data.context_tokens !== undefined) {
             updateContextMeter(data.context_tokens, data.context_limit);
           }
+        } else if (data.type === 'distill_started') {
+          startDistillPolling(currentSessionId);
         } else if (data.type === 'status') {
           showStatus(data.text);
         } else if (data.type === 'reasoning') {
@@ -1207,10 +1355,10 @@ async function sendMessage(overrideText = null, approveExecution = false) {
           appendPlanActionBar();
         } else if (data.type === 'cancelled') {
           removeStatus();
-          appendMessage('⏹ Выполнение остановлено.', 'assistant');
+          appendMessage('Выполнение остановлено пользователем.', 'assistant');
         } else if (data.type === 'error') {
           removeStatus();
-          appendMessage(`❌ Ошибка: ${data.error}`, 'assistant');
+          appendMessage(`Ошибка: ${data.error}`, 'assistant');
         } else if (data.type === 'done') {
           removeStatus();
           finalizeCurrentAssistantBox();
@@ -1221,9 +1369,9 @@ async function sendMessage(overrideText = null, approveExecution = false) {
   } catch (err) {
     removeStatus();
     if (err.name === 'AbortError') {
-      appendMessage('⏹ Запрос прерван пользователем.', 'assistant');
+      appendMessage('Запрос прерван пользователем.', 'assistant');
     } else {
-      appendMessage(`❌ Ошибка сети: ${err.message}`, 'assistant');
+      appendMessage(`Ошибка сети: ${err.message}`, 'assistant');
     }
   } finally {
     removeStatus();
@@ -1274,4 +1422,3 @@ btnToggleSidebar.onclick = () => {
 // Startup
 fetchStatus();
 loadSessions();
-setInterval(fetchStatus, 20000);

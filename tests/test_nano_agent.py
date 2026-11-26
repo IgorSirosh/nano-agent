@@ -189,11 +189,13 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
         ) as ac:
             r_idx = await ac.get("/")
             self.assertEqual(r_idx.status_code, 200)
-            self.assertIn("NanoAgent v2.0", r_idx.text)
+            self.assertIn("NanoAgent", r_idx.text)
+            self.assertIn("styles.css?v=2.1", r_idx.text)
 
             r_st = await ac.get("/api/status")
             self.assertEqual(r_st.status_code, 200)
             self.assertTrue(r_st.json()["has_key"])
+            self.assertEqual(r_st.json()["distill_engine"], "gemini_free")
 
             r_new = await ac.post("/api/sessions/new", json={"title": "API Test", "mode": "plan"})
             self.assertEqual(r_new.status_code, 200)
@@ -214,6 +216,69 @@ class TestNanoAgentV2(unittest.IsolatedAsyncioTestCase):
 
             r_del = await ac.delete(f"/api/sessions/{sid}")
             self.assertEqual(r_del.status_code, 200)
+
+    async def test_gemini_free_wallet_guard_and_agy_distill_success(self) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        cfg_mod.save_config(
+            provider="abliteration",
+            api_key="ak_dummy_api1",
+            distill_engine="gemini_free",
+        )
+        s = await storage_mod.create_session(title="Wallet Guard Test", cwd=str(self.tmp_dir))
+        sid = s["id"]
+        await storage_mod.append_session_message(sid, {"role": "user", "content": "первый вопрос о сервере"})
+        await storage_mod.append_session_message(sid, {"role": "assistant", "content": "первый ответ про порт 5051"})
+        await storage_mod.append_session_message(sid, {"role": "user", "content": "второй вопрос"})
+
+        # Case 1: agy fails / unavailable -> paid client MUST NOT be called!
+        with patch.object(ctx_mod, "load_config", return_value={
+            **cfg_mod.load_config(),
+            "distill_engine": "gemini_free",
+            "agy_available": False,
+            "has_gemini_key": False,
+        }), patch.object(ctx_mod, "_run_paid_main_api_distiller", new=AsyncMock()) as paid_mock:
+            await ctx_mod.distill_session_async(sid, fallback_model="abliterated-model-large-flash", manual=True)
+            paid_mock.assert_not_awaited()
+            st_err = ctx_mod.session_distill_status[sid]
+            self.assertEqual(st_err["status"], "error")
+            self.assertIn("$0", st_err["error"])
+
+        # Case 2: agy raises RuntimeError -> paid client STILL MUST NOT be called!
+        with patch.object(ctx_mod, "load_config", return_value={
+            **cfg_mod.load_config(),
+            "distill_engine": "gemini_free",
+            "agy_available": True,
+            "has_gemini_key": False,
+        }), patch.object(
+            ctx_mod, "run_agy_gemini_distiller", new=AsyncMock(side_effect=RuntimeError("cli timeout"))
+        ), patch.object(ctx_mod, "_run_paid_main_api_distiller", new=AsyncMock()) as paid_mock2:
+            await ctx_mod.distill_session_async(sid, fallback_model="abliterated-model-large-flash", manual=True)
+            paid_mock2.assert_not_awaited()
+            self.assertEqual(ctx_mod.session_distill_status[sid]["status"], "error")
+            self.assertIn("$0", ctx_mod.session_distill_status[sid]["error"])
+
+        # Case 3: successful agy run saves engine_label = "Gemini 3.8 Flash · $0"
+        fake_summary = "### Целевая задача пользователя\nПроверка бесплатного сжатия."
+        with patch.object(ctx_mod, "load_config", return_value={
+            **cfg_mod.load_config(),
+            "distill_engine": "gemini_free",
+            "agy_available": True,
+            "has_gemini_key": False,
+        }), patch.object(
+            ctx_mod, "run_agy_gemini_distiller", new=AsyncMock(return_value=fake_summary)
+        ), patch.object(ctx_mod, "_run_paid_main_api_distiller", new=AsyncMock()) as paid_mock3:
+            await ctx_mod.distill_session_async(sid, manual=True)
+            paid_mock3.assert_not_awaited()
+
+        st_ok = ctx_mod.session_distill_status[sid]
+        self.assertEqual(st_ok["status"], "done")
+        self.assertEqual(st_ok["engine_label"], "Gemini 3.8 Flash · $0")
+        loaded = await storage_mod.get_session(sid)
+        self.assertEqual(loaded["active_memory"], fake_summary)
+        distill_ev = [m for m in loaded["messages"] if m.get("event") == "distilled"]
+        self.assertEqual(len(distill_ev), 1)
+        self.assertEqual(distill_ev[0]["engine_label"], "Gemini 3.8 Flash · $0")
 
     async def test_all_six_tools_and_cancellation_and_plan_gate(self) -> None:
         # 1. Plan mode gating

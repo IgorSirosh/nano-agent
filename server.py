@@ -56,6 +56,8 @@ class ConfigUpdateRequest(BaseModel):
     api_key: Optional[str] = ""
     base_url: Optional[str] = None
     admin_key: Optional[str] = None
+    distill_engine: Optional[str] = None
+    gemini_api_key: Optional[str] = None
 
 
 class SystemPromptUpdateRequest(BaseModel):
@@ -114,6 +116,10 @@ async def get_status():
         "provider": cfg["provider"],
         "port": cfg["port"],
         "has_key": cfg["has_key"],
+        "distill_engine": cfg["distill_engine"],
+        "distill_label": cfg["distill_label"],
+        "agy_available": cfg["agy_available"],
+        "has_gemini_key": cfg["has_gemini_key"],
         "mode": f"Context Distiller v2.0 (Порт {cfg['port']})",
         "cwd": os.getcwd(),
         "balance": balance,
@@ -132,6 +138,10 @@ async def get_config_endpoint():
         "base_url": cfg["base_url"],
         "masked_key": cfg["masked_key"],
         "has_admin_key": cfg["has_admin_key"],
+        "distill_engine": cfg["distill_engine"],
+        "distill_label": cfg["distill_label"],
+        "agy_available": cfg["agy_available"],
+        "has_gemini_key": cfg["has_gemini_key"],
         "port": cfg["port"],
         "balance": balance,
     }
@@ -145,6 +155,8 @@ async def update_config_endpoint(req: ConfigUpdateRequest):
             api_key=req.api_key,
             base_url=req.base_url,
             admin_key=req.admin_key,
+            distill_engine=req.distill_engine,
+            gemini_api_key=req.gemini_api_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -157,6 +169,10 @@ async def update_config_endpoint(req: ConfigUpdateRequest):
         "has_key": updated["has_key"],
         "masked_key": updated["masked_key"],
         "has_admin_key": updated["has_admin_key"],
+        "distill_engine": updated["distill_engine"],
+        "distill_label": updated["distill_label"],
+        "agy_available": updated["agy_available"],
+        "has_gemini_key": updated["has_gemini_key"],
         "balance": balance,
     }
 
@@ -248,8 +264,13 @@ async def manual_distill_endpoint(req: ManualDistillRequest):
     if st.get("status") == "running":
         return {"status": "running", "message": "Фоновое сжатие памяти уже выполняется"}
 
-    asyncio.create_task(distill_session_async(req.session_id, fallback_model=req.model))
-    return {"status": "started", "message": "Фоновое сжатие памяти запущено параллельно"}
+    cfg = load_config()
+    asyncio.create_task(distill_session_async(req.session_id, fallback_model=req.model, manual=True))
+    return {
+        "status": "started",
+        "engine_label": cfg["distill_label"],
+        "message": f"Сжатие запущено ({cfg['distill_label']})",
+    }
 
 
 @app.get("/api/distill/status/{session_id}")

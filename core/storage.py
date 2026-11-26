@@ -270,6 +270,7 @@ async def commit_distillation(
     compressed_ids: Set[str],
     new_memory: str,
     tokens_before: int,
+    engine_label: str = "Gemini 3.8 Flash · $0",
 ) -> Optional[dict]:
     async with get_session_lock(session_id):
         session = _read_session_sync(session_id)
@@ -296,6 +297,7 @@ async def commit_distillation(
             "saved_tokens": saved_tokens,
             "saved_percent": saved_pct,
             "compressed_count": len(compressed_ids),
+            "engine_label": engine_label,
             "summary": session["active_memory"],
         }
         session["messages"].append(event_msg)
@@ -311,6 +313,7 @@ async def commit_distillation(
             "tokens_after": tokens_after,
             "saved_tokens": saved_tokens,
             "saved_percent": saved_pct,
+            "engine_label": engine_label,
             "summary": session["active_memory"],
         }
 

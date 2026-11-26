@@ -1,5 +1,6 @@
 import os
 import platform
+import shutil
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -56,6 +57,21 @@ def is_valid_secret(val: Optional[str]) -> bool:
     return True
 
 
+def find_agy_binary() -> Optional[str]:
+    found = shutil.which("agy")
+    if found and os.access(found, os.X_OK):
+        return found
+    home = Path.home()
+    for candidate in (
+        home / ".local" / "bin" / "agy",
+        home / ".gemini" / "bin" / "agy",
+        Path("/usr/local/bin/agy"),
+    ):
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def _read_raw_env() -> Dict[str, str]:
     values: Dict[str, str] = {}
     if ENV_FILE.exists():
@@ -66,7 +82,7 @@ def _read_raw_env() -> Dict[str, str]:
                     values[k] = v
         except Exception:
             pass
-    for key in ("BASE_URL", "ABLIT_KEY", "OPENROUTER_API_KEY", "ADMIN_KEY", "PORT"):
+    for key in ("BASE_URL", "ABLIT_KEY", "OPENROUTER_API_KEY", "ADMIN_KEY", "PORT", "DISTILL_ENGINE"):
         if key not in values and key in os.environ:
             values[key] = os.environ[key]
     return values
@@ -86,10 +102,12 @@ def load_config() -> dict:
     or_key_raw = (env.get("OPENROUTER_API_KEY") or "").strip()
     ab_key_raw = (env.get("ABLIT_KEY") or "").strip()
     adm_key_raw = (env.get("ADMIN_KEY") or "").strip()
+    gem_key_raw = (env.get("GEMINI_API_KEY") or "").strip()
 
     or_key = or_key_raw if is_valid_secret(or_key_raw) else ""
     ab_key = ab_key_raw if is_valid_secret(ab_key_raw) else ""
     admin_key = adm_key_raw if is_valid_secret(adm_key_raw) else ""
+    gemini_api_key = gem_key_raw if is_valid_secret(gem_key_raw) else ""
 
     is_openrouter = "openrouter.ai" in base_url.lower() or bool(or_key and not ab_key and or_key.startswith("sk-or-"))
     if is_openrouter:
@@ -102,6 +120,21 @@ def load_config() -> dict:
         provider = "custom"
         api_key = ab_key or or_key
 
+    distill_raw = (env.get("DISTILL_ENGINE") or "gemini_free").strip().lower()
+    distill_engine = distill_raw if distill_raw in ("gemini_free", "main_api") else "gemini_free"
+
+    agy_bin = find_agy_binary()
+    agy_available = bool(agy_bin)
+
+    if distill_engine == "main_api":
+        distill_label = "Основной API (платный)"
+    elif agy_available:
+        distill_label = "Gemini 3.8 Flash · $0"
+    elif gemini_api_key:
+        distill_label = "Gemini API Key"
+    else:
+        distill_label = "Gemini (не найден agy)"
+
     try:
         port = int(env.get("PORT") or 5051)
     except ValueError:
@@ -112,6 +145,11 @@ def load_config() -> dict:
         "base_url": base_url,
         "api_key": api_key,
         "admin_key": admin_key,
+        "gemini_api_key": gemini_api_key,
+        "has_gemini_key": is_valid_secret(gemini_api_key),
+        "distill_engine": distill_engine,
+        "distill_label": distill_label,
+        "agy_available": agy_available,
         "port": port,
         "has_key": is_valid_secret(api_key),
         "has_admin_key": is_valid_secret(admin_key),
@@ -124,6 +162,8 @@ def save_config(
     api_key: Optional[str] = None,
     base_url: Optional[str] = None,
     admin_key: Optional[str] = None,
+    distill_engine: Optional[str] = None,
+    gemini_api_key: Optional[str] = None,
 ) -> dict:
     current = load_config()
     prov = (provider or current["provider"] or "abliteration").strip().lower()
@@ -149,6 +189,21 @@ def save_config(
     else:
         final_admin = current["admin_key"]
 
+    if gemini_api_key == "__CLEAR__":
+        final_gemini_key = ""
+    elif gemini_api_key is not None and gemini_api_key.strip():
+        if not is_valid_secret(gemini_api_key.strip()):
+            raise ValueError("Указан некорректный Gemini API Key")
+        final_gemini_key = gemini_api_key.strip()
+    else:
+        final_gemini_key = current["gemini_api_key"]
+
+    if distill_engine is not None:
+        de = distill_engine.strip().lower()
+        final_distill = de if de in ("gemini_free", "main_api") else "gemini_free"
+    else:
+        final_distill = current["distill_engine"]
+
     if prov == "openrouter":
         final_base_url = "https://openrouter.ai/api/v1"
         ab_key = ""
@@ -169,6 +224,8 @@ def save_config(
         f"ABLIT_KEY={ab_key}",
         f"OPENROUTER_API_KEY={or_key}",
         f"ADMIN_KEY={final_admin}",
+        f"DISTILL_ENGINE={final_distill}",
+        f"GEMINI_API_KEY={final_gemini_key}",
         f"PORT={port}",
     ]
 
@@ -186,6 +243,7 @@ def save_config(
     os.environ["ABLIT_KEY"] = ab_key
     os.environ["OPENROUTER_API_KEY"] = or_key
     os.environ["ADMIN_KEY"] = final_admin
+    os.environ["DISTILL_ENGINE"] = final_distill
     os.environ["PORT"] = str(port)
 
     invalidate_balance_cache()
@@ -269,8 +327,8 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "deepseek/deepseek-v4.1-flash",
                 "name": "DeepSeek V4.1 Flash",
                 "short_name": "Flash 1M",
-                "icon": "⚡",
-                "badge": "🚀 Быстрая",
+                "icon": "zap",
+                "badge": "Быстрая",
                 "context": "1M контекст",
                 "max_context": 1000000,
                 "desc": "Ультрабыстрый отклик, идеальна для кода, файлов и терминала",
@@ -280,8 +338,8 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "anthropic/claude-3.5-sonnet",
                 "name": "Claude 3.5 Sonnet",
                 "short_name": "Claude 3.5",
-                "icon": "🎭",
-                "badge": "🏆 Топ для кода",
+                "icon": "sparkles",
+                "badge": "Топ для кода",
                 "context": "200k контекст",
                 "max_context": 200000,
                 "desc": "Высочайшая точность при работе с проектами и рефакторингом",
@@ -291,7 +349,7 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "openai/gpt-4o",
                 "name": "GPT-4o",
                 "short_name": "GPT-4o",
-                "icon": "🟢",
+                "icon": "cpu",
                 "badge": "Универсал",
                 "context": "128k контекст",
                 "max_context": 128000,
@@ -302,8 +360,8 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "qwen/qwen-2.5-72b-instruct",
                 "name": "Qwen 2.5 72B Instruct",
                 "short_name": "Qwen 2.5",
-                "icon": "💻",
-                "badge": "💻 Код",
+                "icon": "code",
+                "badge": "Код",
                 "context": "128k контекст",
                 "max_context": 128000,
                 "desc": "Мощная открытая модель для программирования и анализа",
@@ -313,7 +371,7 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "deepseek/deepseek-chat",
                 "name": "DeepSeek V3 (Chat)",
                 "short_name": "DeepSeek V3",
-                "icon": "🧠",
+                "icon": "layers",
                 "badge": "Баланс",
                 "context": "64k контекст",
                 "max_context": 64000,
@@ -324,8 +382,8 @@ def get_models_catalog(provider: str) -> List[dict]:
                 "id": "deepseek/deepseek-r1",
                 "name": "DeepSeek R1 (Reasoning)",
                 "short_name": "DeepSeek R1",
-                "icon": "🔬",
-                "badge": "Рассуждения CoT",
+                "icon": "brain",
+                "badge": "CoT",
                 "context": "164k контекст",
                 "max_context": 164000,
                 "desc": "Глубокие пошаговые рассуждения перед ответом",
@@ -339,8 +397,8 @@ def get_models_catalog(provider: str) -> List[dict]:
             "id": "abliterated-model-large-flash",
             "name": "Flash 1M (DeepSeek V4.1 Flash)",
             "short_name": "Flash 1M",
-            "icon": "⚡",
-            "badge": "🚀 Быстрая (Рекомендуется)",
+            "icon": "zap",
+            "badge": "Быстрая",
             "context": "1M контекст",
             "max_context": 1000000,
             "desc": "Ультрабыстрая разблокированная модель, 1M токенов, идеальна для кода и команд",
@@ -350,8 +408,8 @@ def get_models_catalog(provider: str) -> List[dict]:
             "id": "abliterated-model",
             "name": "Qwen 3.5 (Abliterated)",
             "short_name": "Qwen 3.5",
-            "icon": "🧠",
-            "badge": "⚖️ Баланс",
+            "icon": "cpu",
+            "badge": "Баланс",
             "context": "256k контекст",
             "max_context": 256000,
             "desc": "Сбалансированная модель на базе Qwen 3.5, глубокая логика и точность",
@@ -361,8 +419,8 @@ def get_models_catalog(provider: str) -> List[dict]:
             "id": "abliterated-model-large-v2",
             "name": "GLM-5.3 Large v2",
             "short_name": "GLM-5.3 Large",
-            "icon": "🏋️",
-            "badge": "🔥 Мощная (Large)",
+            "icon": "layers",
+            "badge": "Large",
             "context": "1M контекст",
             "max_context": 1000000,
             "desc": "Тяжелая флагманская модель с огромным контекстом для сложного анализа",
@@ -372,7 +430,7 @@ def get_models_catalog(provider: str) -> List[dict]:
             "id": "abliterated-model-large",
             "name": "Abliterated Large v1",
             "short_name": "Large v1",
-            "icon": "⭐",
+            "icon": "sparkles",
             "badge": "Классика",
             "context": "1M контекст",
             "max_context": 1000000,
@@ -457,7 +515,7 @@ def build_full_system_prompt(
     if active_memory and active_memory.strip():
         mem_block = (
             "\n\n=======================================================\n"
-            "🧠 АКТУАЛЬНАЯ РАБОЧАЯ ПАМЯТЬ АГЕНТА (ACTIVE MEMORY):\n"
+            "АКТУАЛЬНАЯ РАБОЧАЯ ПАМЯТЬ АГЕНТА (ACTIVE MEMORY):\n"
             f"{active_memory.strip()}\n"
             "=======================================================\n"
             "ВАЖНОЕ ПРАВИЛО: Опирайся на факты, пути, IP-адреса, токены и решения из Active Memory. "

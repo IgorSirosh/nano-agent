@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NanoAgent v2.0 — Автономный AI-ассистент</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.0">
+  <title>NanoAgent — Автономный AI-ассистент</title>
+  <link rel="stylesheet" href="/static/styles.css?v=2.1">
   <script src="/static/marked.min.js"></script>
 </head>
 <body>
   <aside id="sidebar" aria-label="История диалогов">
     <div class="sidebar-header">
       <button type="button" class="btn-new-chat" id="btn-new-chat">
-        <span>+</span> Новый диалог
+        <span class="svg-slot" data-icon="plus"></span>
+        <span>Новый диалог</span>
       </button>
       <div class="session-search-wrap">
+        <span class="svg-slot search-icon" data-icon="search"></span>
         <input type="search" id="session-search" class="session-search-input" placeholder="Поиск по диалогам..." aria-label="Поиск по диалогам">
       </div>
     </div>
@@ -23,14 +25,16 @@
   <div id="main-wrapper">
     <header>
       <div class="header-left">
-        <button type="button" class="toggle-sidebar-btn" id="btn-toggle-sidebar" title="Скрыть или показать список диалогов" aria-label="Переключить боковую панель">☰</button>
+        <button type="button" class="icon-btn" id="btn-toggle-sidebar" title="Скрыть или показать список диалогов" aria-label="Переключить боковую панель">
+          <span class="svg-slot" data-icon="sidebar"></span>
+        </button>
         <div class="header-title-box">
-          <h1>
-            <span>🧠 NanoAgent</span>
-            <span class="header-badge" id="header-version-badge">v2.0</span>
+          <h1 class="brand-title">
+            <span>NanoAgent</span>
+            <span class="header-badge tabular" id="header-version-badge">v2.0</span>
           </h1>
-          <button type="button" class="cwd-pill" id="cwd-pill-btn" title="Нажмите, чтобы изменить рабочую директорию сессии">
-            <span>📁</span>
+          <button type="button" class="cwd-pill" id="cwd-pill-btn" title="Изменить рабочую директорию сессии">
+            <span class="svg-slot" data-icon="folder"></span>
             <span id="cwd-text">~</span>
           </button>
         </div>
@@ -38,32 +42,30 @@
 
       <div class="header-right">
         <button type="button" class="model-header-btn" id="model-header-btn" title="Выбрать модель нейросети">
-          <span class="m-icon" id="m-header-icon">⚡</span>
-          <span class="m-text-box">
-            <span class="m-sublabel">Модель</span>
-            <span class="m-name" id="m-header-name">Flash 1M</span>
-          </span>
-          <span class="m-badge" id="m-header-badge">1M</span>
-          <span class="m-arrow">▾</span>
+          <span class="svg-slot" id="m-header-icon" data-icon="zap"></span>
+          <span class="m-name" id="m-header-name">Flash 1M</span>
+          <span class="m-badge tabular" id="m-header-badge">1M</span>
+          <span class="svg-slot m-arrow" data-icon="chevronDown"></span>
         </button>
 
         <button type="button" class="btn-distill-now" id="btn-distill-now" title="Сжать старую историю диалога в Active Memory">
-          <span>⚡</span>
+          <span class="svg-slot" data-icon="shieldCheck"></span>
           <span>Сжать память</span>
+          <span class="distill-engine-tag" id="distill-engine-tag">Gemini · $0</span>
         </button>
 
-        <div class="pill-balance" id="pill-balance" title="Доступный баланс API">—</div>
+        <div class="pill-balance tabular" id="pill-balance" title="Доступный баланс основного API">—</div>
 
-        <div class="context-meter-box" id="context-meter-box" title="Заполненность активного окна контекста">
-          <span class="meter-label">Контекст:</span>
+        <div class="context-meter-box tabular" id="context-meter-box" title="Заполненность активного окна контекста">
+          <span class="meter-label">Контекст</span>
           <div class="meter-bar-outer">
             <div class="meter-bar-inner" id="meter-bar-inner"></div>
           </div>
           <span id="meter-text">0%</span>
         </div>
 
-        <button type="button" class="btn-header-settings" id="btn-header-settings" title="Настройки API, провайдера и системного промпта">
-          <span>⚙️</span>
+        <button type="button" class="btn-header-settings" id="btn-header-settings" title="Настройки API, движка памяти и системного промпта">
+          <span class="svg-slot" data-icon="sliders"></span>
           <span class="hide-sm">Настройки</span>
         </button>
       </div>
@@ -71,7 +73,10 @@
 
     <div class="active-memory-strip hidden" id="active-memory-strip">
       <div class="memory-strip-head">
-        <span>🧠 Active Memory загружена в системный контекст</span>
+        <span class="memory-strip-title">
+          <span class="svg-slot" data-icon="sparkles"></span>
+          <span>Active Memory загружена в системный контекст</span>
+        </span>
         <button type="button" class="btn-link-sm" id="btn-toggle-memory-preview">Показать / скрыть</button>
       </div>
       <div class="memory-strip-body hidden" id="memory-strip-body"></div>
@@ -80,12 +85,12 @@
     <main id="chat-container" aria-live="polite"></main>
 
     <footer>
-      <div class="input-box-wrapper">
+      <div class="composer-card">
         <div class="model-pills-bar" id="model-pills-bar">
-          <span class="model-pills-label">⚡ Модель:</span>
           <div class="model-pills-list" id="model-pills-list"></div>
           <button type="button" class="model-pill-more" id="btn-open-model-modal" title="Открыть полный каталог моделей">
-            ⚙️ Каталог
+            <span class="svg-slot" data-icon="layers"></span>
+            <span>Каталог</span>
           </button>
         </div>
 
@@ -94,16 +99,18 @@
         <div class="input-toolbar">
           <div class="toolbar-left">
             <div class="mode-switcher" role="group" aria-label="Режим работы агента">
-              <button type="button" class="mode-btn active" id="mode-btn-plan" data-mode="plan" title="Сначала исследует проект и предлагает план; изменения только после подтверждения">
-                🧭 План
+              <button type="button" class="mode-btn active" id="mode-btn-plan" data-mode="plan" title="Изучает проект в режиме чтения и предлагает план; изменения после подтверждения">
+                <span class="svg-slot" data-icon="compass"></span>
+                <span>План</span>
               </button>
-              <button type="button" class="mode-btn" id="mode-btn-act" data-mode="act" title="Автономное выполнение команд и правка файлов без подтверждения">
-                ⚡ Авто
+              <button type="button" class="mode-btn" id="mode-btn-act" data-mode="act" title="Автономное выполнение команд и правка файлов">
+                <span class="svg-slot" data-icon="zap"></span>
+                <span>Авто</span>
               </button>
             </div>
 
             <label class="toolbar-field">
-              <span>Reasoning:</span>
+              <span>Reasoning</span>
               <select class="toolbar-select" id="reasoning-select">
                 <option value="low" selected>Low</option>
                 <option value="none">None</option>
@@ -113,8 +120,8 @@
             </label>
 
             <label class="toolbar-field">
-              <span>Лимит:</span>
-              <select class="toolbar-select" id="context-limit-select">
+              <span>Лимит</span>
+              <select class="toolbar-select tabular" id="context-limit-select">
                 <option value="16000">16k</option>
                 <option value="32000" selected>32k</option>
                 <option value="64000">64k</option>
@@ -123,8 +130,8 @@
             </label>
 
             <label class="toolbar-field">
-              <span>Сжатие:</span>
-              <select class="toolbar-select" id="threshold-select">
+              <span>Автосжатие</span>
+              <select class="toolbar-select tabular" id="threshold-select">
                 <option value="0.40">40%</option>
                 <option value="0.50" selected>50%</option>
                 <option value="0.60">60%</option>
@@ -136,8 +143,13 @@
           </div>
 
           <div class="toolbar-actions">
-            <button type="button" class="btn-stop hidden" id="btn-stop">⏹ Стоп</button>
-            <button type="button" class="btn-send" id="btn-send">Отправить</button>
+            <button type="button" class="btn-stop hidden" id="btn-stop" title="Остановить генерацию и команды">
+              <span class="svg-slot" data-icon="stop"></span>
+              <span>Стоп</span>
+            </button>
+            <button type="button" class="btn-send" id="btn-send" title="Отправить сообщение (Enter)">
+              <span class="svg-slot" data-icon="send"></span>
+            </button>
           </div>
         </div>
       </div>
@@ -147,17 +159,19 @@
   <dialog id="model-modal" closedby="any" aria-labelledby="model-modal-title">
     <div class="dialog-header">
       <div class="modal-title">
-        <h1 id="model-modal-title">🧠 Выбор модели нейросети</h1>
+        <h1 id="model-modal-title">Выбор модели нейросети</h1>
         <span class="modal-provider-badge" id="modal-provider-badge">Abliteration AI</span>
       </div>
       <form method="dialog">
-        <button type="submit" class="modal-close-btn" aria-label="Закрыть">✕</button>
+        <button type="submit" class="modal-close-btn" aria-label="Закрыть">
+          <span class="svg-slot" data-icon="close"></span>
+        </button>
       </form>
     </div>
     <div class="dialog-body">
       <div class="model-cards-grid" id="model-cards-grid"></div>
       <div class="custom-model-box">
-        <label for="custom-model-input">Свой ID модели:</label>
+        <label for="custom-model-input">Свой ID модели</label>
         <div class="custom-model-input-row">
           <input type="text" id="custom-model-input" placeholder="например: anthropic/claude-3.7-sonnet или deepseek/deepseek-chat" autofocus>
           <button type="button" id="custom-model-apply-btn">Применить</button>
@@ -169,42 +183,69 @@
   <dialog id="settings-modal" closedby="any" aria-labelledby="settings-modal-title">
     <div class="dialog-header">
       <div class="modal-title">
-        <h1 id="settings-modal-title">⚙️ Настройки NanoAgent</h1>
+        <h1 id="settings-modal-title">Настройки NanoAgent</h1>
       </div>
       <form method="dialog">
-        <button type="submit" class="modal-close-btn" aria-label="Закрыть">✕</button>
+        <button type="submit" class="modal-close-btn" aria-label="Закрыть">
+          <span class="svg-slot" data-icon="close"></span>
+        </button>
       </form>
     </div>
     <div class="settings-tabs">
-      <button type="button" class="settings-tab active" data-tab="api">🔑 API и провайдер</button>
-      <button type="button" class="settings-tab" data-tab="prompt">📝 Системный промпт</button>
+      <button type="button" class="settings-tab active" data-tab="api">
+        <span class="svg-slot" data-icon="key"></span>
+        <span>API и память</span>
+      </button>
+      <button type="button" class="settings-tab" data-tab="prompt">
+        <span class="svg-slot" data-icon="fileCode"></span>
+        <span>Системный промпт</span>
+      </button>
     </div>
     <div class="dialog-body">
       <div id="tab-panel-api" class="settings-form">
         <div class="settings-field">
-          <label for="settings-provider-select">Провайдер нейросетей:</label>
+          <label for="settings-provider-select">Провайдер основного агента</label>
           <select id="settings-provider-select" class="settings-input">
-            <option value="abliteration">Abliteration AI (Без цензуры, по умолчанию)</option>
+            <option value="abliteration">Abliteration AI (Без цензуры)</option>
             <option value="openrouter">OpenRouter API (Claude, GPT, DeepSeek)</option>
             <option value="custom">Свой OpenAI-совместимый сервер</option>
           </select>
         </div>
 
         <div class="settings-field hidden" id="settings-baseurl-group">
-          <label for="settings-baseurl-input">Base URL API:</label>
+          <label for="settings-baseurl-input">Base URL API</label>
           <input type="url" id="settings-baseurl-input" class="settings-input" placeholder="https://api.example.com/v1">
         </div>
 
         <div class="settings-field">
-          <label for="settings-apikey-input">Основной API-ключ (<span id="settings-key-label">Abliteration ak_...</span>):</label>
+          <label for="settings-apikey-input">Основной API-ключ (<span id="settings-key-label">Abliteration ak_...</span>)</label>
           <input type="password" id="settings-apikey-input" class="settings-input" placeholder="Оставьте пустым, чтобы сохранить текущий ключ">
         </div>
 
         <div class="settings-field" id="settings-admin-group">
-          <label for="settings-adminkey-input">Admin Key (для баланса Abliteration, опционально):</label>
+          <label for="settings-adminkey-input">Admin Key (баланс Abliteration, опционально)</label>
           <div class="inline-field-row">
             <input type="password" id="settings-adminkey-input" class="settings-input" placeholder="sk_... (необязательно)">
-            <button type="button" class="btn-cancel hidden" id="btn-clear-adminkey" title="Удалить сохранённый Admin Key">Очистить</button>
+            <button type="button" class="btn-cancel hidden" id="btn-clear-adminkey">Очистить</button>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-field">
+          <label for="settings-distill-select">Движок сжатия памяти (Active Memory)</label>
+          <select id="settings-distill-select" class="settings-input">
+            <option value="gemini_free">Google Gemini CLI (agy) — Бесплатно ($0)</option>
+            <option value="main_api">Основной API провайдера (расходует баланс)</option>
+          </select>
+          <span class="field-hint" id="distill-agy-hint">Проверка локального agy...</span>
+        </div>
+
+        <div class="settings-field" id="settings-gemini-group">
+          <label for="settings-geminikey-input">Gemini API Key (AI Studio, резерв если нет agy)</label>
+          <div class="inline-field-row">
+            <input type="password" id="settings-geminikey-input" class="settings-input" placeholder="AIza... (необязательно при наличии agy)">
+            <button type="button" class="btn-cancel hidden" id="btn-clear-geminikey">Очистить</button>
           </div>
         </div>
 
@@ -214,19 +255,19 @@
           <form method="dialog">
             <button type="submit" class="btn-cancel">Отмена</button>
           </form>
-          <button type="button" class="btn-save-settings" id="settings-save-btn">💾 Сохранить API</button>
+          <button type="button" class="btn-save-settings" id="settings-save-btn">Сохранить настройки</button>
         </div>
       </div>
 
       <div id="tab-panel-prompt" class="settings-form hidden">
         <div class="settings-field">
-          <label for="system-prompt-editor">Базовые инструкции агента (system_prompt.txt):</label>
+          <label for="system-prompt-editor">Базовые инструкции агента (system_prompt.txt)</label>
           <textarea id="system-prompt-editor" class="settings-input prompt-textarea" rows="11"></textarea>
         </div>
         <div id="prompt-save-status" class="status-banner hidden"></div>
         <div class="dialog-actions space-between">
-          <button type="button" class="btn-cancel" id="prompt-reset-btn">↺ Сбросить к стандартному</button>
-          <button type="button" class="btn-save-settings" id="prompt-save-btn">💾 Сохранить промпт</button>
+          <button type="button" class="btn-cancel" id="prompt-reset-btn">Сбросить к стандартному</button>
+          <button type="button" class="btn-save-settings" id="prompt-save-btn">Сохранить промпт</button>
         </div>
       </div>
     </div>
@@ -235,20 +276,22 @@
   <dialog id="cwd-modal" closedby="any" aria-labelledby="cwd-modal-title">
     <div class="dialog-header">
       <div class="modal-title">
-        <h1 id="cwd-modal-title">📁 Рабочая директория и название</h1>
+        <h1 id="cwd-modal-title">Рабочая директория и название</h1>
       </div>
       <form method="dialog">
-        <button type="submit" class="modal-close-btn" aria-label="Закрыть">✕</button>
+        <button type="submit" class="modal-close-btn" aria-label="Закрыть">
+          <span class="svg-slot" data-icon="close"></span>
+        </button>
       </form>
     </div>
     <div class="dialog-body">
       <div class="settings-form">
         <div class="settings-field">
-          <label for="cwd-modal-input">Рабочий каталог (cwd) для этой сессии:</label>
-          <input type="text" id="cwd-modal-input" class="settings-input" placeholder="/home/user/project" autofocus>
+          <label for="cwd-modal-input">Рабочий каталог (cwd) для этой сессии</label>
+          <input type="text" id="cwd-modal-input" class="settings-input mono-input" placeholder="/home/user/project" autofocus>
         </div>
         <div class="settings-field">
-          <label for="title-modal-input">Название диалога:</label>
+          <label for="title-modal-input">Название диалога</label>
           <input type="text" id="title-modal-input" class="settings-input" placeholder="Название сессии">
         </div>
         <div id="cwd-save-status" class="status-banner hidden"></div>
@@ -256,12 +299,12 @@
           <form method="dialog">
             <button type="submit" class="btn-cancel">Отмена</button>
           </form>
-          <button type="button" class="btn-save-settings" id="cwd-save-btn">💾 Применить</button>
+          <button type="button" class="btn-save-settings" id="cwd-save-btn">Применить</button>
         </div>
       </div>
     </div>
   </dialog>
 
-  <script src="/static/app.js?v=2.0"></script>
+  <script src="/static/app.js?v=2.1"></script>
 </body>
 </html>

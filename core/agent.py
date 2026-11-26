@@ -103,8 +103,9 @@ async def chat_stream_generator(
         if current_ctx_tokens >= threshold_tokens and len(session["messages"]) >= 4:
             st = session_distill_status.get(session_id, {})
             if st.get("status") != "running":
-                asyncio.create_task(distill_session_async(session_id, fallback_model=model))
-                yield _sse({"type": "status", "text": "🧠 Фоновый компрессор памяти запущен..."})
+                asyncio.create_task(distill_session_async(session_id, fallback_model=model, manual=False))
+                yield _sse({"type": "distill_started"})
+                yield _sse({"type": "status", "text": "Фоновый компрессор памяти запущен..."})
 
         cli = get_async_openai_client()
         max_iterations = 25
@@ -115,7 +116,7 @@ async def chat_stream_generator(
 
         while iteration < max_iterations:
             if cancel_event.is_set():
-                yield _sse({"type": "cancelled", "text": "⏹ Выполнение остановлено пользователем"})
+                yield _sse({"type": "cancelled", "text": "Выполнение остановлено пользователем"})
                 break
 
             iteration += 1
@@ -205,7 +206,7 @@ async def chat_stream_generator(
                             "reasoning": full_reasoning or None,
                         },
                     )
-                yield _sse({"type": "cancelled", "text": "⏹ Генерация остановлена пользователем"})
+                yield _sse({"type": "cancelled", "text": "Генерация остановлена пользователем"})
                 break
 
             if last_usage:
@@ -340,7 +341,7 @@ async def chat_stream_generator(
                     )
 
                 if cancel_event.is_set():
-                    yield _sse({"type": "cancelled", "text": "⏹ Выполнение остановлено пользователем"})
+                    yield _sse({"type": "cancelled", "text": "Выполнение остановлено пользователем"})
                     break
 
                 latest_session = await get_session(session_id)
@@ -356,8 +357,9 @@ async def chat_stream_generator(
                     if loop_ctx_tokens >= threshold_tokens and len(latest_session["messages"]) >= 6:
                         st = session_distill_status.get(session_id, {})
                         if st.get("status") != "running":
-                            asyncio.create_task(distill_session_async(session_id, fallback_model=model))
-                            yield _sse({"type": "status", "text": "🧠 Фоновый компрессор памяти запущен..."})
+                            asyncio.create_task(distill_session_async(session_id, fallback_model=model, manual=False))
+                            yield _sse({"type": "distill_started"})
+                            yield _sse({"type": "status", "text": "Фоновый компрессор памяти запущен..."})
 
                 continue
 
